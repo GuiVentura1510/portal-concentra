@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: portal
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/portal}
+    username: ${DATABASE_USERNAME:portal}
+    password: ${DATABASE_PASSWORD:portal}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+
+server:
+  port: ${PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
