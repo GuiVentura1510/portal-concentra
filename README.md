@@ -4,12 +4,14 @@ Portal de gamificação do Concentra DF 2026, evento da Concentro nos dias 17 e 
 
 ## Estado atual
 
-O caminho completo até a produção está funcionando: o site publicado chama a API, que consulta o banco. Ainda não há funcionalidades de negócio.
+O caminho completo até a produção está funcionando: o site publicado chama a API, que consulta o banco. A base do cadastro está pronta (tabelas no banco e listagem das EJs); as telas de cadastro e login ainda são provisórias.
 
 - [x] Backend com Postgres, Flyway e endpoint de verificação
 - [x] Frontend com tela de verificação
 - [x] Deploy automático do backend e do frontend
-- [ ] Tailwind, shadcn/ui e manifesto do PWA
+- [x] Tailwind, shadcn/ui, rotas e manifesto do PWA
+- [x] Tabelas de cadastro (`ej` e `congressista`) com as 54 EJs
+- [x] Endpoint que lista as EJs para o formulário de cadastro
 - [ ] Cadastro, login, questionário e perfil
 - [ ] Tripulações
 - [ ] Missões, pontuação e ranking
@@ -30,8 +32,12 @@ O caminho completo até a produção está funcionando: o site publicado chama a
 
 **Frontend**
 
-- React com TypeScript
-- Vite
+- React 19 com TypeScript 6
+- Vite 8
+- Tailwind CSS 4
+- shadcn/ui (base Radix, preset Nova)
+- React Router
+- Manifesto de PWA, sem service worker
 
 ## Estrutura
 
@@ -42,6 +48,15 @@ portal-concentra/
 ├── compose.yaml    Postgres local para desenvolvimento
 └── README.md
 ```
+
+O código do backend fica em `backend/src/main/java/br/org/concentro/portal/`, organizado por assunto:
+
+| Pacote | Conteúdo |
+| --- | --- |
+| `infra` | Segurança, CORS e endpoint de verificação |
+| `cadastro` | EJs e, em seguida, congressistas |
+
+No frontend, as telas ficam em `frontend/src/pages/` e os componentes do shadcn/ui em `frontend/src/components/ui/`.
 
 ## Produção
 
@@ -99,6 +114,7 @@ Os endpoints abaixo não exigem autenticação:
 ```bash
 curl http://localhost:8080/api/ping
 curl http://localhost:8080/actuator/health
+curl http://localhost:8080/api/ejs
 ```
 
 Uma resposta esperada para o ping é:
@@ -107,7 +123,27 @@ Uma resposta esperada para o ping é:
 {"status":"ok","banco":"portal"}
 ```
 
-O endpoint `/api/ping` consulta o banco de dados atual, portanto também funciona como verificação da conexão com o PostgreSQL. As demais rotas exigem autenticação.
+O endpoint `/api/ping` consulta o banco de dados atual, portanto também funciona como verificação da conexão com o PostgreSQL.
+
+O endpoint `/api/ejs` devolve as EJs em ordem alfabética, para o formulário de cadastro:
+
+```json
+[{"id":32,"nome":"Ábaco"},{"id":33,"nome":"AD&M"}]
+```
+
+As demais rotas exigem autenticação. Uma rota nova só fica pública se for liberada em `SecurityConfig`.
+
+## Rotas do site
+
+| Endereço | Tela |
+| --- | --- |
+| `/` | Tela de verificação, provisória |
+| `/cadastro` | Provisória, em construção |
+| `/login` | Provisória, em construção |
+
+Um endereço desconhecido volta para `/`. Em produção, o Render reescreve `/*` para `/index.html`, para que as rotas funcionem ao abrir o link direto.
+
+O site pode ser instalado na tela inicial do celular pelo manifesto em `frontend/public/manifest.webmanifest`. Não há service worker, de propósito: assim o celular nunca serve uma versão antiga quando houver correção durante o evento. Os ícones atuais são provisórios; para trocar, substitua os três PNG em `frontend/public/`.
 
 ## Configuração
 
@@ -139,6 +175,14 @@ O banco é configurado para validação do schema (`ddl-auto: validate`), então
 - Cada mudança é um arquivo novo: `V2__descricao.sql`, `V3__descricao.sql` e assim por diante, com dois sublinhados depois do número.
 - Arquivo já aplicado nunca é editado. Uma correção é sempre uma migração nova.
 - As migrações rodam sozinhas na inicialização, inclusive em produção.
+- Uma EJ nova entra por migração nova, nunca editando a `V2`.
+
+| Migração | Conteúdo |
+| --- | --- |
+| `V1__baseline.sql` | Confirma que o Flyway executa no banco |
+| `V2__tabela_de_cadastro.sql` | Tabelas `ej` e `congressista` e as 54 EJs |
+
+As classes anotadas com `@Entity` precisam bater com as tabelas: se houver diferença, o backend não inicia.
 
 ## Regras do projeto
 
@@ -156,3 +200,20 @@ Com o banco local no ar, execute os testes do backend com:
 cd backend
 ./mvnw test
 ```
+
+Os testes sobem a aplicação inteira contra o banco local, então também aplicam as migrações pendentes.
+
+O frontend não tem testes automatizados. A verificação dele é o lint e o build:
+
+```bash
+cd frontend
+npm run lint
+npm run build
+```
+
+## Fluxo de trabalho
+
+- A `main` é só produção. Cada item do plano tem uma branch curta, como `feat/lista-ejs`.
+- O merge é feito com `git merge --ff-only`, depois de `./mvnw test` (backend) ou de lint e build (frontend) passarem.
+- Commits pequenos, com prefixo `feat:`, `fix:`, `chore:` ou `docs:`.
+- O `npm audit` acusa vulnerabilidades na cadeia `braces` → `shadcn`. É ferramenta de build e não entra no site publicado. Não rode `npm audit fix --force`.
