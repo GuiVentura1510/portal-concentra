@@ -19,4 +19,12 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // Os arquivos de src/components/ui são gerados pelo shadcn e exportam
+    // funções de estilo junto com os componentes (ex.: buttonVariants).
+    // Esta regra só protege a atualização instantânea da tela durante o
+    // desenvolvimento, então fica desligada nessa pasta.
+    files: ['src/components/ui/**/*.{ts,tsx}'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
 ])
