@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 
 import { CartaoTripulacaoStaff, type Tripulacao } from "@/components/CartaoTripulacaoStaff";
+import { PainelMissoes } from "@/components/PainelMissoes";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,6 +25,7 @@ type Montagem = {
 };
 type Estado = "carregando" | "pronto" | "sem-acesso" | "sem-login" | "falha";
 type Painel = { resumo: Resumo; tripulacoes: Tripulacao[] };
+type Aba = "tripulacoes" | "missoes";
 
 // Busca o resumo e, se já houver tripulações, a lista completa.
 async function buscarPainel(): Promise<Painel> {
@@ -39,13 +41,14 @@ function estadoDoErro(e: unknown): Estado {
   return "falha";
 }
 
-// Painel do staff, parte 1: tripulações. Só abre para contas do staff;
+// Painel do staff: tripulações e missões. Só abre para contas do staff;
 // a própria API recusa as outras.
 export default function Staff() {
   const [estado, setEstado] = useState<Estado>("carregando");
   const [resumo, setResumo] = useState<Resumo | null>(null);
   const [tripulacoes, setTripulacoes] = useState<Tripulacao[]>([]);
   const [busca, setBusca] = useState("");
+  const [aba, setAba] = useState<Aba>("tripulacoes");
 
   const aplicar = useCallback((painel: Painel) => {
     setResumo(painel.resumo);
@@ -105,7 +108,28 @@ export default function Staff() {
             </>
           )}
 
-          {estado === "pronto" && resumo && (
+          {estado === "pronto" && (
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant={aba === "tripulacoes" ? "default" : "outline"}
+                className="h-10"
+                onClick={() => setAba("tripulacoes")}
+              >
+                Tripulações
+              </Button>
+              <Button
+                variant={aba === "missoes" ? "default" : "outline"}
+                className="h-10"
+                onClick={() => setAba("missoes")}
+              >
+                Missões
+              </Button>
+            </div>
+          )}
+
+          {estado === "pronto" && aba === "missoes" && <PainelMissoes />}
+
+          {estado === "pronto" && aba === "tripulacoes" && resumo && (
             <>
               <p className="text-sm">
                 {contar(resumo.congressistas, "congressista cadastrado", "congressistas cadastrados")} ·{" "}
