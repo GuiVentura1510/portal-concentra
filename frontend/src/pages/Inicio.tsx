@@ -9,45 +9,102 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { api, ErroApi } from "@/lib/api";
+import { AREAS_ATUACAO, CARGOS, TEMPOS_MEJ, rotuloDe } from "@/lib/opcoes";
+import { lerToken, sair } from "@/lib/sessao";
 
-// O endereço da API vem do ambiente para o mesmo código servir na máquina
-// local e em produção (no Render, a variável VITE_API_URL).
-const API_URL = import.meta.env.VITE_API_URL;
+type Perfil = {
+  id: number;
+  nome: string;
+  email: string;
+  ejId: number;
+  ejNome: string;
+  cargo: string;
+  tempoMej: string;
+  areaAtuacao: string;
+};
 
-async function buscarPing(): Promise<string> {
-  try {
-    const r = await fetch(`${API_URL}/api/ping`);
-    return JSON.stringify(await r.json());
-  } catch {
-    return "falha ao falar com a API";
-  }
-}
+type Estado = "carregando" | "visitante" | "logado" | "falha";
 
-// Tela provisória: prova que site, API e banco estão ligados.
-// Será substituída pela home de verdade no bloco de 06 a 08/10.
+// Início do portal. Quem não entrou vê as opções de cadastro e login;
+// quem entrou vê o próprio perfil.
 export default function Inicio() {
-  const [resposta, setResposta] = useState("consultando a API...");
+  const [estado, setEstado] = useState<Estado>(() => (lerToken() ? "carregando" : "visitante"));
+  const [perfil, setPerfil] = useState<Perfil | null>(null);
 
   useEffect(() => {
-    buscarPing().then(setResposta);
+    if (!lerToken()) return;
+    api<Perfil>("/api/perfil", { autenticado: true })
+      .then((dados) => {
+        setPerfil(dados);
+        setEstado("logado");
+      })
+      .catch((e) => {
+        // 401: o token venceu e já foi apagado; a pessoa entra de novo.
+        setEstado(e instanceof ErroApi && e.status === 401 ? "visitante" : "falha");
+      });
   }, []);
 
+  function sairDaConta() {
+    sair();
+    setPerfil(null);
+    setEstado("visitante");
+  }
+
   return (
-    <main className="flex min-h-svh items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
+    <main className="flex min-h-svh items-start justify-center p-4 sm:items-center">
+      <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Portal Concentra</CardTitle>
-          <CardDescription>A Expedição da Estrela Polar</CardDescription>
+          <CardTitle>A Expedição da Estrela Polar</CardTitle>
+          <CardDescription>Concentra DF 2026 · 17 e 18 de outubro</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <p className="text-sm break-all">Resposta da API: {resposta}</p>
-          <Button onClick={() => buscarPing().then(setResposta)}>
-            Consultar de novo
-          </Button>
-          <nav className="flex justify-between text-sm underline">
-            <Link to="/cadastro">Cadastro</Link>
-            <Link to="/login">Login</Link>
-          </nav>
+          {estado === "carregando" && <p className="text-sm">Carregando...</p>}
+
+          {estado === "visitante" && (
+            <>
+              <p className="text-sm">
+                Cadastre-se para entrar na sua tripulação e participar das missões do evento.
+              </p>
+              <Button asChild className="h-10 w-full">
+                <Link to="/cadastro">Fazer cadastro</Link>
+              </Button>
+              <Button asChild variant="outline" className="h-10 w-full">
+                <Link to="/login">Já tenho conta</Link>
+              </Button>
+            </>
+          )}
+
+          {estado === "logado" && perfil && (
+            <>
+              <p className="text-lg font-medium">Olá, {perfil.nome.split(" ")[0]}!</p>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+                <dt className="text-muted-foreground">EJ</dt>
+                <dd>{perfil.ejNome}</dd>
+                <dt className="text-muted-foreground">Cargo</dt>
+                <dd>{rotuloDe(CARGOS, perfil.cargo)}</dd>
+                <dt className="text-muted-foreground">Tempo de MEJ</dt>
+                <dd>{rotuloDe(TEMPOS_MEJ, perfil.tempoMej)}</dd>
+                <dt className="text-muted-foreground">Área</dt>
+                <dd>{rotuloDe(AREAS_ATUACAO, perfil.areaAtuacao)}</dd>
+                <dt className="text-muted-foreground">E-mail</dt>
+                <dd className="break-all">{perfil.email}</dd>
+              </dl>
+              <p className="text-sm">Sua tripulação será revelada no dia 15 de outubro.</p>
+              <Button variant="outline" className="h-10 w-full" onClick={sairDaConta}>
+                Sair
+              </Button>
+            </>
+          )}
+
+          {estado === "falha" && (
+            <>
+              <p className="text-sm">Não foi possível carregar seus dados.</p>
+              <Button className="h-10 w-full" onClick={() => window.location.reload()}>
+                Tentar de novo
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
     </main>

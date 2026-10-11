@@ -1,7 +1,8 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 
-import EmBreve from "@/pages/EmBreve";
+import Cadastro from "@/pages/Cadastro";
 import Inicio from "@/pages/Inicio";
+import Login from "@/pages/Login";
 
 // Mapa de rotas do portal: cada endereço aponta para uma tela.
 export default function App() {
@@ -9,8 +10,8 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Inicio />} />
-        <Route path="/cadastro" element={<EmBreve titulo="Cadastro" />} />
-        <Route path="/login" element={<EmBreve titulo="Login" />} />
+        <Route path="/cadastro" element={<Cadastro />} />
+        <Route path="/login" element={<Login />} />
         {/* Endereço desconhecido volta ao início, para ninguém cair em
             uma tela em branco por causa de link digitado errado. */}
         <Route path="*" element={<Navigate to="/" replace />} />
