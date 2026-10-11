@@ -28,11 +28,13 @@ public class SecurityConfig {
                 // Rotas públicas: quem ainda não tem conta precisa alcançá-las.
                 .requestMatchers("/api/ping", "/actuator/health").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/ejs").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/cadastro").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/cadastro", "/api/login").permitAll()
                 // Página de erro interna do Spring: sem isto, todo erro vira 403.
                 .requestMatchers("/error").permitAll()
-                // Todo o resto exige login.
-                .anyRequest().authenticated());
+                // Todo o resto exige o token do login.
+                .anyRequest().authenticated())
+            // Lê o cabeçalho "Authorization: Bearer <token>" e confere a assinatura.
+            .oauth2ResourceServer(o -> o.jwt(Customizer.withDefaults()));
         return http.build();
     }
 
