@@ -12,25 +12,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { api, ErroApi } from "@/lib/api";
-import { AREAS_ATUACAO, CARGOS, TEMPOS_MEJ, rotuloDe } from "@/lib/opcoes";
-import { lerToken, sair } from "@/lib/sessao";
-
-type Perfil = {
-  id: number;
-  nome: string;
-  email: string;
-  ejId: number;
-  ejNome: string;
-  cargo: string;
-  tempoMej: string;
-  areaAtuacao: string;
-  staff: boolean;
-};
+import type { Perfil } from "@/lib/perfil";
+import { lerToken } from "@/lib/sessao";
 
 type Estado = "carregando" | "visitante" | "logado" | "falha";
 
-// Início do portal. Quem não entrou vê as opções de cadastro e login;
-// quem entrou vê o próprio perfil.
+// Início do portal. Quem não entrou vê as opções de cadastro e login; quem
+// entrou vê a tripulação e as missões. Os dados do cadastro e o botão de sair
+// ficam na aba Perfil, e o ranking tem a própria aba.
 export default function Inicio() {
   const [estado, setEstado] = useState<Estado>(() => (lerToken() ? "carregando" : "visitante"));
   const [perfil, setPerfil] = useState<Perfil | null>(null);
@@ -48,12 +37,6 @@ export default function Inicio() {
         setEstado(e instanceof ErroApi && e.status === 401 ? "visitante" : "falha");
       });
   }, []);
-
-  function sairDaConta() {
-    sair();
-    setPerfil(null);
-    setEstado("visitante");
-  }
 
   return (
     <main className="flex min-h-svh items-start justify-center p-4 sm:items-center">
@@ -82,18 +65,6 @@ export default function Inicio() {
           {estado === "logado" && perfil && (
             <>
               <p className="text-lg font-medium">Olá, {perfil.nome.split(" ")[0]}!</p>
-              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-                <dt className="text-muted-foreground">EJ</dt>
-                <dd>{perfil.ejNome}</dd>
-                <dt className="text-muted-foreground">Cargo</dt>
-                <dd>{rotuloDe(CARGOS, perfil.cargo)}</dd>
-                <dt className="text-muted-foreground">Tempo de MEJ</dt>
-                <dd>{rotuloDe(TEMPOS_MEJ, perfil.tempoMej)}</dd>
-                <dt className="text-muted-foreground">Área</dt>
-                <dd>{rotuloDe(AREAS_ATUACAO, perfil.areaAtuacao)}</dd>
-                <dt className="text-muted-foreground">E-mail</dt>
-                <dd className="break-all">{perfil.email}</dd>
-              </dl>
               {perfil.staff ? (
                 <>
                   <p className="text-sm">Você está no staff, por isso não entra em tripulação.</p>
@@ -104,15 +75,9 @@ export default function Inicio() {
               ) : (
                 <>
                   <MinhaTripulacao meuId={perfil.id} aoCarregar={setTemTripulacao} />
-                  <Button asChild variant="outline" className="h-10 w-full">
-                    <Link to="/ranking">Ver ranking</Link>
-                  </Button>
                   <MissoesDaTripulacao temTripulacao={temTripulacao} />
                 </>
               )}
-              <Button variant="outline" className="h-10 w-full" onClick={sairDaConta}>
-                Sair
-              </Button>
             </>
           )}
 
