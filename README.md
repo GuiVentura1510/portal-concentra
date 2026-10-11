@@ -1,21 +1,33 @@
 # Portal Concentra
 
-Portal de gamificação do Concentra DF 2026, evento da Concentro nos dias 17 e 18/10/2026. A gamificação se chama **A Expedição da Estrela Polar**.
+Portal de gamificação do Concentra DF 2026, evento da Concentro nos dias 17 e 18/10/2026. A gamificação se chama **A Expedição da Estrela Polar**: os congressistas são divididos em tripulações, cumprem missões durante o evento e somam pontos num ranking.
 
 ## Estado atual
 
-O caminho completo até a produção está funcionando: o site publicado chama a API, que consulta o banco. A base do cadastro está pronta (tabelas no banco e listagem das EJs); as telas de cadastro e login ainda são provisórias.
+Todas as funções previstas para o evento estão em produção desde 11/10/2026.
 
 - [x] Backend com Postgres, Flyway e endpoint de verificação
-- [x] Frontend com tela de verificação
 - [x] Deploy automático do backend e do frontend
 - [x] Tailwind, shadcn/ui, rotas e manifesto do PWA
-- [x] Tabelas de cadastro (`ej` e `congressista`) com as 54 EJs
-- [x] Endpoint que lista as EJs para o formulário de cadastro
-- [ ] Cadastro, login, questionário e perfil
-- [ ] Tripulações
-- [ ] Missões, pontuação e ranking
-- [ ] Telas do staff
+- [x] Cadastro com EJ, cargo, tempo de MEJ e área, e login com JWT
+- [x] Perfil do congressista
+- [x] Montagem das tripulações e encaixe de quem se cadastra depois
+- [x] Missões criadas pelo staff, envio pelas tripulações, fila de aprovação
+- [x] Pontuação por extrato e ranking
+- [x] Painel do staff: tripulações, missões, fila e pessoas
+- [ ] Ícones oficiais do PWA
+
+## Como funciona
+
+1. **Cadastro.** A pessoa abre o site, informa nome, e-mail (o mesmo da compra do ingresso), senha, EJ, cargo, tempo de MEJ e área, e já entra logada. O login vale por 10 dias no mesmo aparelho.
+2. **Tripulações.** Em 15/10 o staff monta as tripulações uma única vez. São grupos de 5 a 6 pessoas, de EJs diferentes, misturando novatos e veteranos. Quem se cadastra depois da montagem entra na hora numa tripulação com vaga e sem colega da mesma EJ. Os nomes são as 88 constelações.
+3. **Capitão e ponto de encontro.** A tripulação escolhe o capitão no evento e o staff registra no painel. O staff também define o ponto de encontro de cada tripulação.
+4. **Missões.** O staff cria as missões no painel, com pontos, vagas e horário. Há duas formas de conclusão:
+   - **Envio do capitão:** a tripulação envia uma resposta em texto e o staff aprova ou recusa. Enquanto a tripulação não tem capitão, qualquer membro pode enviar; depois, só o capitão.
+   - **Staff marca:** o staff registra a missão cumprida direto, como ao carimbar um passaporte.
+5. **Ranking.** Cada aprovação gera um lançamento de pontos. O ranking soma os lançamentos de cada tripulação.
+
+As missões são conteúdo da organização: são criadas e editadas no painel, não no código.
 
 ## Stack
 
@@ -27,7 +39,7 @@ O caminho completo até a produção está funcionando: o site publicado chama a
 - Spring Data JPA e Hibernate
 - PostgreSQL 17
 - Flyway para migrações
-- Spring Security com sessões stateless
+- Spring Security como resource server OAuth2, com JWT HMAC-SHA256 e sessões stateless
 - Actuator para monitoramento
 
 **Frontend**
@@ -53,10 +65,23 @@ O código do backend fica em `backend/src/main/java/br/org/concentro/portal/`, o
 
 | Pacote | Conteúdo |
 | --- | --- |
-| `infra` | Segurança, CORS e endpoint de verificação |
-| `cadastro` | EJs e, em seguida, congressistas |
+| `infra` | Segurança, JWT, CORS e endpoint de verificação |
+| `acesso` | Login, emissão do token e lista do staff (`EquipeStaff`) |
+| `cadastro` | EJs, congressistas, perfil e a aba Pessoas do staff |
+| `tripulacao` | Tripulações, algoritmo de montagem (`MontadorDeTripulacoes`), nomes e rotas |
+| `missao` | Missões, conclusões, lançamentos de pontos e ranking |
 
-No frontend, as telas ficam em `frontend/src/pages/` e os componentes do shadcn/ui em `frontend/src/components/ui/`.
+No frontend:
+
+| Pasta | Conteúdo |
+| --- | --- |
+| `src/pages/` | Telas (início, cadastro, login, ranking, staff) |
+| `src/components/` | Componentes das telas, como os painéis do staff |
+| `src/components/ui/` | Componentes do shadcn/ui |
+| `src/lib/api.ts` | Chamadas à API; o token só vai nas chamadas marcadas como autenticadas |
+| `src/lib/sessao.ts` | Guarda do token no aparelho |
+| `src/lib/opcoes.ts` | Códigos e textos de cargo, tempo de MEJ e área |
+| `src/lib/datas.ts` | Conversão entre UTC e o horário de Brasília |
 
 ## Produção
 
@@ -66,7 +91,7 @@ No frontend, as telas ficam em `frontend/src/pages/` e os componentes do shadcn/
 | API | https://portal-concentra-api.onrender.com | Render, Web Service com Docker |
 | Banco | acesso interno | Render Postgres 17 |
 
-Todo `git push` na branch `main` publica sozinho. Mudanças em `backend/` republicam a API e mudanças em `frontend/` republicam o site.
+Todo `git push` na branch `main` publica sozinho. Mudanças em `backend/` republicam a API (cerca de 1 minuto) e mudanças em `frontend/` republicam o site. Antes de testar em produção, espere a mensagem "Your service is live" no painel do Render.
 
 ## Pré-requisitos
 
@@ -89,6 +114,12 @@ Todo `git push` na branch `main` publica sozinho. Mudanças em `backend/` republ
 	./mvnw spring-boot:run
 	```
 
+	Para entrar como staff no ambiente local, informe o seu e-mail ao subir o backend:
+
+	```bash
+	STAFF_EMAILS=seu.email@exemplo.com ./mvnw spring-boot:run
+	```
+
 3. Em outro terminal, inicie o frontend:
 
 	```bash
@@ -99,6 +130,8 @@ Todo `git push` na branch `main` publica sozinho. Mudanças em `backend/` republ
 
 O backend sobe em `http://localhost:8080` e o frontend em `http://localhost:5173`. O Flyway executa as migrações automaticamente quando o backend inicia.
 
+Depois de mudar o backend, reinicie-o (Ctrl+C e suba de novo). Se aparecer "Endereço já em uso", ainda há um backend antigo rodando: encerre-o com `kill $(lsof -t -i:8080)`.
+
 Para parar o banco:
 
 ```bash
@@ -107,41 +140,86 @@ docker compose down
 
 Os dados ficam no volume Docker `pgdata`. Para removê-los também, use `docker compose down -v`.
 
-## Endpoints disponíveis
-
-Os endpoints abaixo não exigem autenticação:
+Para desfazer uma montagem de tripulações feita no banco local:
 
 ```bash
-curl http://localhost:8080/api/ping
-curl http://localhost:8080/actuator/health
-curl http://localhost:8080/api/ejs
+docker compose exec db psql -U portal -d portal -c "delete from lancamento; delete from conclusao; update congressista set tripulacao_id = null; delete from tripulacao; update missao set vagas_usadas = 0;"
 ```
 
-Uma resposta esperada para o ping é:
+## API
+
+### Públicas
+
+| Método e rota | Descrição |
+| --- | --- |
+| `GET /api/ping` | Verificação da API e da conexão com o banco |
+| `GET /actuator/health` | Saúde da aplicação |
+| `GET /api/ejs` | EJs em ordem alfabética, para o formulário |
+| `POST /api/cadastro` | Cria a conta e devolve o token |
+| `POST /api/login` | Devolve o token |
+
+### Com login
+
+| Método e rota | Descrição |
+| --- | --- |
+| `GET /api/perfil` | Dados da pessoa, incluindo se é do staff |
+| `GET /api/tripulacao` | Tripulação da pessoa (404 antes da montagem) |
+| `GET /api/missoes` | Missões visíveis, com a situação da tripulação em cada uma |
+| `POST /api/missoes/{id}/resposta` | Envio da resposta de uma missão |
+| `GET /api/ranking` | Tripulações por pontos |
+
+### Só staff (`/api/staff/**`)
+
+| Método e rota | Descrição |
+| --- | --- |
+| `GET /api/staff/tripulacoes/resumo` | Totais de congressistas e tripulações |
+| `GET /api/staff/tripulacoes` | Todas as tripulações com membros |
+| `POST /api/staff/tripulacoes/montar` | Monta as tripulações (uma única vez; 409 se já montadas) |
+| `PUT /api/staff/tripulacoes/{id}/capitao` | Registra o capitão |
+| `PUT /api/staff/tripulacoes/{id}/ponto-encontro` | Define o ponto de encontro |
+| `GET` e `POST /api/staff/missoes` | Lista e cria missões |
+| `PUT /api/staff/missoes/{id}` | Edita uma missão |
+| `POST /api/staff/missoes/{id}/marcar` | Registra a missão cumprida por uma tripulação |
+| `GET /api/staff/conclusoes?status=PENDENTE` | Fila de respostas |
+| `POST /api/staff/conclusoes/{id}/aprovar` | Aprova e lança os pontos |
+| `POST /api/staff/conclusoes/{id}/recusar` | Recusa, com motivo |
+| `GET /api/staff/congressistas?busca=` | Busca por nome, e-mail ou EJ |
+| `POST /api/staff/congressistas/{id}/senha` | Gera uma senha temporária |
+| `DELETE /api/staff/congressistas/{id}` | Remove um cadastro sem histórico |
+| `POST /api/staff/congressistas/cruzamento` | Aponta cadastros fora da lista de inscritos |
+
+Uma rota nova só fica pública se for liberada em `SecurityConfig`. A rota `/error` precisa continuar liberada: sem ela, todo erro vira 403.
+
+Exemplo de verificação:
+
+```bash
+curl https://portal-concentra-api.onrender.com/api/ping
+```
 
 ```json
 {"status":"ok","banco":"portal"}
 ```
 
-O endpoint `/api/ping` consulta o banco de dados atual, portanto também funciona como verificação da conexão com o PostgreSQL.
-
-O endpoint `/api/ejs` devolve as EJs em ordem alfabética, para o formulário de cadastro:
-
-```json
-[{"id":32,"nome":"Ábaco"},{"id":33,"nome":"AD&M"}]
-```
-
-As demais rotas exigem autenticação. Uma rota nova só fica pública se for liberada em `SecurityConfig`.
-
 ## Rotas do site
 
 | Endereço | Tela |
 | --- | --- |
-| `/` | Tela de verificação, provisória |
-| `/cadastro` | Provisória, em construção |
-| `/login` | Provisória, em construção |
+| `/` | Início. Visitante vê cadastro e login; congressista vê perfil, tripulação, missões e o botão do ranking; staff vê o acesso ao painel |
+| `/cadastro` | Cadastro, com login automático no fim |
+| `/login` | Login |
+| `/ranking` | Ranking das tripulações, destacando a da pessoa |
+| `/staff` | Painel do staff |
 
 Um endereço desconhecido volta para `/`. Em produção, o Render reescreve `/*` para `/index.html`, para que as rotas funcionem ao abrir o link direto.
+
+### Painel do staff
+
+| Aba | O que faz |
+| --- | --- |
+| Tripulações | Resumo, botão de montar (confirmação em dois toques, some depois da montagem), busca, capitão, ponto de encontro e "Registrar missão cumprida" |
+| Missões | Cria e edita missões: título, descrição, pontos, vagas, início e fim no horário de Brasília, forma de conclusão e visibilidade. Não há exclusão: desmarcar "visível" tira a missão do ar |
+| Fila | Respostas enviadas pelas tripulações, com aprovar ou recusar |
+| Pessoas | Busca, senha temporária, remoção de cadastro e cruzamento com a lista de inscritos |
 
 O site pode ser instalado na tela inicial do celular pelo manifesto em `frontend/public/manifest.webmanifest`. Não há service worker, de propósito: assim o celular nunca serve uma versão antiga quando houver correção durante o evento. Os ícones atuais são provisórios; para trocar, substitua os três PNG em `frontend/public/`.
 
@@ -158,6 +236,14 @@ As propriedades podem ser sobrescritas por variáveis de ambiente. Em produção
 | `DATABASE_PASSWORD` | `portal` | Senha do banco |
 | `PORT` | `8080` | Porta HTTP da aplicação |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Endereços de sites autorizados a chamar a API, separados por vírgula e sem barra no final |
+| `JWT_SECRET` | segredo de desenvolvimento | Chave que assina os tokens. Em produção é obrigatória: a API não sobe no Render com o segredo de desenvolvimento |
+| `STAFF_EMAILS` | vazio | E-mails do staff, separados por vírgula |
+
+Sobre o staff:
+
+- Cada pessoa do staff cria a conta pelo próprio site e depois tem o e-mail incluído em `STAFF_EMAILS`.
+- A mudança vale depois que a pessoa sai e entra de novo.
+- Contas do staff não entram em tripulação. Quem vai jogar como congressista não pode estar na lista.
 
 ### Frontend
 
@@ -172,7 +258,7 @@ O valor de `VITE_API_URL` é embutido no site durante o build. Para alterá-lo e
 
 O banco é configurado para validação do schema (`ddl-auto: validate`), então toda mudança de estrutura é uma migração Flyway em `backend/src/main/resources/db/migration`.
 
-- Cada mudança é um arquivo novo: `V2__descricao.sql`, `V3__descricao.sql` e assim por diante, com dois sublinhados depois do número.
+- Cada mudança é um arquivo novo, com dois sublinhados depois do número: `V7__descricao.sql`.
 - Arquivo já aplicado nunca é editado. Uma correção é sempre uma migração nova.
 - As migrações rodam sozinhas na inicialização, inclusive em produção.
 - Uma EJ nova entra por migração nova, nunca editando a `V2`.
@@ -181,16 +267,33 @@ O banco é configurado para validação do schema (`ddl-auto: validate`), então
 | --- | --- |
 | `V1__baseline.sql` | Confirma que o Flyway executa no banco |
 | `V2__tabela_de_cadastro.sql` | Tabelas `ej` e `congressista` e as 54 EJs |
+| `V3__cargo_do_congressista.sql` | Coluna `cargo` |
+| `V4__tripulacoes.sql` | Tabela `tripulacao` e `congressista.tripulacao_id` |
+| `V5__missoes.sql` | Tabela `missao` |
+| `V6__conclusoes_e_pontos.sql` | `missao.vagas_usadas`, tabelas `conclusao` e `lancamento` |
+
+Nos logs da API, a linha `Current version of schema "public": 6` confirma que todas foram aplicadas.
 
 As classes anotadas com `@Entity` precisam bater com as tabelas: se houver diferença, o backend não inicia.
 
 ## Regras do projeto
 
-- Vagas limitadas por missão são reservadas com operação atômica no banco, nunca com leitura seguida de escrita.
-- Existe restrição única por tripulação e missão, para que um reenvio não pontue duas vezes.
-- A pontuação é um extrato de lançamentos. O total é sempre a soma do extrato, nunca um campo editável.
-- As janelas de horário das missões são validadas no servidor. Os instantes são guardados em UTC e exibidos no horário de Brasília.
-- O ranking fica em cache em memória por 10 a 15 segundos.
+- **Vagas.** Vagas limitadas por missão são reservadas com um único `update` condicional no banco, nunca com leitura seguida de escrita. Se nenhuma linha muda, a missão está esgotada.
+- **Uma conclusão por tripulação e missão.** Um índice único parcial (`ux_conclusao_ativa`) impede duas conclusões pendentes ou aprovadas da mesma tripulação na mesma missão. Depois de uma recusa, a tripulação pode enviar de novo.
+- **Extrato de pontos.** A pontuação é um extrato de lançamentos, com no máximo um lançamento por conclusão. O total é sempre a soma do extrato, nunca um campo editável. Os pontos são copiados da missão no momento da aprovação: mudar os pontos da missão depois não altera o que já foi lançado.
+- **Horários.** As janelas das missões são validadas no servidor. Os instantes são guardados em UTC e exibidos e digitados no horário de Brasília (UTC-3).
+- **Ranking.** Fica em cache em memória por 15 segundos (`app.ranking.cache`). Empates dividem a posição.
+- **Tripulações.** A montagem e o encaixe de quem chega depois travam as tripulações (`select ... for update`), para que cadastros simultâneos não ocupem a mesma vaga. Uma EJ só se repete numa tripulação quando tem mais gente do que o número de tripulações.
+- **Segurança.** A API responde com objetos próprios e nunca devolve senha nem hash. Senhas usam BCrypt, com no máximo 72 bytes.
+
+## Operação do evento
+
+- **Até 14/10:** cruzar os cadastros com a lista de inscritos na aba Pessoas e remover contas de teste e cadastros indevidos. O cruzamento só aponta: confira antes de remover, porque a pessoa pode ter usado outro e-mail.
+- **15/10:** montar as tripulações em produção. A montagem roda **uma única vez**; não aperte o botão antes da hora.
+- **Missões:** a organização cria as missões no painel. Não crie missões de teste em produção, porque elas não podem ser apagadas, só escondidas.
+- **Senha esquecida:** na aba Pessoas, "Nova senha" gera uma senha temporária para passar à pessoa.
+- **Remoção de cadastro:** só é possível para quem não enviou nem avaliou missão, não lançou pontos e não é capitão.
+- **Capitão:** depois de registrado, só ele envia as respostas da tripulação.
 
 ## Testes
 
@@ -201,7 +304,7 @@ cd backend
 ./mvnw test
 ```
 
-Os testes sobem a aplicação inteira contra o banco local, então também aplicam as migrações pendentes.
+São 47 testes, que sobem a aplicação inteira contra o banco local e, por isso, também aplicam as migrações pendentes. Os testes que gravam no banco usam `@Transactional` e são desfeitos no fim. Os relatórios ficam em `backend/target/surefire-reports/`.
 
 O frontend não tem testes automatizados. A verificação dele é o lint e o build:
 
@@ -213,7 +316,8 @@ npm run build
 
 ## Fluxo de trabalho
 
-- A `main` é só produção. Cada item do plano tem uma branch curta, como `feat/lista-ejs`.
+- A `main` é só produção. Cada item tem uma branch curta, como `feat/aba-pessoas`.
 - O merge é feito com `git merge --ff-only`, depois de `./mvnw test` (backend) ou de lint e build (frontend) passarem.
 - Commits pequenos, com prefixo `feat:`, `fix:`, `chore:` ou `docs:`.
+- A pasta `.vscode/` fica fora dos commits.
 - O `npm audit` acusa vulnerabilidades na cadeia `braces` → `shadcn`. É ferramenta de build e não entra no site publicado. Não rode `npm audit fix --force`.
