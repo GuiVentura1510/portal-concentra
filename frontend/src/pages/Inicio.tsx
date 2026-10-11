@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
+import { MinhaTripulacao } from "@/components/MinhaTripulacao";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -22,6 +23,7 @@ type Perfil = {
   cargo: string;
   tempoMej: string;
   areaAtuacao: string;
+  staff: boolean;
 };
 
 type Estado = "carregando" | "visitante" | "logado" | "falha";
@@ -90,7 +92,11 @@ export default function Inicio() {
                 <dt className="text-muted-foreground">E-mail</dt>
                 <dd className="break-all">{perfil.email}</dd>
               </dl>
-              <p className="text-sm">Sua tripulação será revelada no dia 15 de outubro.</p>
+              {perfil.staff ? (
+                <p className="text-sm">Você está no staff, por isso não entra em tripulação.</p>
+              ) : (
+                <MinhaTripulacao meuId={perfil.id} />
+              )}
               <Button variant="outline" className="h-10 w-full" onClick={sairDaConta}>
                 Sair
               </Button>
