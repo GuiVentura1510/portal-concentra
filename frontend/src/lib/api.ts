@@ -52,5 +52,9 @@ export async function api<T>(caminho: string, opcoes: Opcoes = {}): Promise<T> {
   if (!resposta.ok) {
     throw new ErroApi(resposta.status, `A API respondeu ${resposta.status}.`);
   }
+  // 204 (ex.: remoção) não tem corpo.
+  if (resposta.status === 204) {
+    return undefined as T;
+  }
   return (await resposta.json()) as T;
 }

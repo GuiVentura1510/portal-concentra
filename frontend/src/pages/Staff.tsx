@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { CartaoTripulacaoStaff, type MissaoMarcavel, type Tripulacao } from "@/components/CartaoTripulacaoStaff";
 import { FilaAprovacao } from "@/components/FilaAprovacao";
 import { PainelMissoes, type MissaoStaff } from "@/components/PainelMissoes";
+import { PainelPessoas } from "@/components/PainelPessoas";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,7 +27,7 @@ type Montagem = {
 };
 type Estado = "carregando" | "pronto" | "sem-acesso" | "sem-login" | "falha";
 type Painel = { resumo: Resumo; tripulacoes: Tripulacao[]; marcaveis: MissaoMarcavel[] };
-type Aba = "tripulacoes" | "missoes" | "fila";
+type Aba = "tripulacoes" | "missoes" | "fila" | "pessoas";
 
 // Busca o resumo, a lista de tripulações (se já houver) e as missões que o staff registra direto.
 async function buscarPainel(): Promise<Painel> {
@@ -116,7 +117,7 @@ export default function Staff() {
           )}
 
           {estado === "pronto" && (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Button
                 variant={aba === "tripulacoes" ? "default" : "outline"}
                 className="h-10"
@@ -134,11 +135,19 @@ export default function Staff() {
               <Button variant={aba === "fila" ? "default" : "outline"} className="h-10" onClick={() => setAba("fila")}>
                 Fila
               </Button>
+              <Button
+                variant={aba === "pessoas" ? "default" : "outline"}
+                className="h-10"
+                onClick={() => setAba("pessoas")}
+              >
+                Pessoas
+              </Button>
             </div>
           )}
 
           {estado === "pronto" && aba === "missoes" && <PainelMissoes />}
           {estado === "pronto" && aba === "fila" && <FilaAprovacao />}
+          {estado === "pronto" && aba === "pessoas" && <PainelPessoas />}
 
           {estado === "pronto" && aba === "tripulacoes" && resumo && (
             <>

@@ -110,4 +110,9 @@ public class Congressista {
     public void entrarNa(Tripulacao tripulacao) {
         this.tripulacao = tripulacao;
     }
+
+    // Usado pelo staff quando a pessoa esquece a senha.
+    public void trocarSenha(String novoHash) {
+        this.senhaHash = novoHash;
+    }
 }
