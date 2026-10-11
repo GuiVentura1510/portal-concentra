@@ -16,6 +16,7 @@ Todas as funções previstas para o evento estão em produção desde 11/10/2026
 - [x] Pontuação por extrato e ranking
 - [x] Painel do staff: tripulações, missões, fila e pessoas
 - [x] Missões individuais e exclusão de missões sem respostas
+- [x] Ranking individual
 - [ ] Visual do site com a identidade do evento
 - [ ] Ícones oficiais do PWA
 
@@ -27,7 +28,9 @@ Todas as funções previstas para o evento estão em produção desde 11/10/2026
 4. **Missões.** O staff cria as missões no painel, com pontos, vagas e horário. Cada missão é **da tripulação** (a tripulação cumpre junta, uma vez) ou **individual** (cada pessoa cumpre a sua). Há duas formas de conclusão:
    - **Resposta pelo portal:** uma resposta em texto é enviada e o staff aprova ou recusa. Nas missões da tripulação, enquanto não há capitão qualquer membro pode enviar; depois, só o capitão. Nas individuais, cada pessoa envia a sua.
    - **Staff marca:** o staff registra a missão cumprida direto, como ao carimbar um passaporte: no cartão da tripulação ou, nas individuais, na aba Pessoas.
-5. **Ranking.** Cada aprovação gera um lançamento de pontos. O ranking soma os lançamentos de cada tripulação. Os pontos das missões individuais somam na tripulação da pessoa, a menos que `INDIVIDUAIS_NA_TRIPULACAO=false`.
+5. **Rankings.** Cada aprovação gera um lançamento de pontos. São dois rankings separados:
+   - **Tripulações:** soma só as missões da tripulação.
+   - **Individual:** soma só as missões individuais de cada pessoa. Os pontos individuais não entram no ranking das tripulações.
 
 As missões são conteúdo da organização: são criadas e editadas no painel, não no código.
 
@@ -168,7 +171,8 @@ docker compose exec db psql -U portal -d portal -c "delete from lancamento; dele
 | `GET /api/tripulacao` | Tripulação da pessoa (404 antes da montagem) |
 | `GET /api/missoes` | Missões visíveis, com a situação da tripulação em cada uma |
 | `POST /api/missoes/{id}/resposta` | Envio da resposta de uma missão |
-| `GET /api/ranking` | Tripulações por pontos |
+| `GET /api/ranking` | Tripulações por pontos (só missões da tripulação) |
+| `GET /api/ranking/individual` | Pessoas por pontos (só missões individuais): as 100 primeiras posições, a posição de quem pediu e o total |
 
 ### Só staff (`/api/staff/**`)
 
@@ -210,7 +214,7 @@ curl https://portal-concentra-api.onrender.com/api/ping
 | `/` | Início. Visitante vê cadastro e login; congressista vê perfil, tripulação, missões e o botão do ranking; staff vê o acesso ao painel |
 | `/cadastro` | Cadastro, com login automático no fim |
 | `/login` | Login |
-| `/ranking` | Ranking das tripulações, destacando a da pessoa |
+| `/ranking` | Rankings das tripulações e individual, em abas, destacando a tripulação e a posição da pessoa |
 | `/staff` | Painel do staff |
 
 Um endereço desconhecido volta para `/`. Em produção, o Render reescreve `/*` para `/index.html`, para que as rotas funcionem ao abrir o link direto.
@@ -241,7 +245,6 @@ As propriedades podem ser sobrescritas por variáveis de ambiente. Em produção
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Endereços de sites autorizados a chamar a API, separados por vírgula e sem barra no final |
 | `JWT_SECRET` | segredo de desenvolvimento | Chave que assina os tokens. Em produção é obrigatória: a API não sobe no Render com o segredo de desenvolvimento |
 | `STAFF_EMAILS` | vazio | E-mails do staff, separados por vírgula |
-| `INDIVIDUAIS_NA_TRIPULACAO` | `true` | Se os pontos das missões individuais somam no ranking da tripulação da pessoa |
 
 Sobre o staff:
 
@@ -288,7 +291,7 @@ As classes anotadas com `@Entity` precisam bater com as tabelas: se houver difer
 - **Exclusão.** Uma missão só é excluída se ninguém respondeu nem pontuou; assim, nenhum ponto some do ranking.
 - **Extrato de pontos.** A pontuação é um extrato de lançamentos, com no máximo um lançamento por conclusão. O total é sempre a soma do extrato, nunca um campo editável. Os pontos são copiados da missão no momento da aprovação: mudar os pontos da missão depois não altera o que já foi lançado.
 - **Horários.** As janelas das missões são validadas no servidor. Os instantes são guardados em UTC e exibidos e digitados no horário de Brasília (UTC-3).
-- **Ranking.** Fica em cache em memória por 15 segundos (`app.ranking.cache`). Empates dividem a posição.
+- **Rankings.** Os dois ficam em cache em memória por 15 segundos (`app.ranking.cache`). Empates dividem a posição. Um lançamento com a pessoa preenchida é de missão individual e conta só no ranking individual.
 - **Tripulações.** A montagem e o encaixe de quem chega depois travam as tripulações (`select ... for update`), para que cadastros simultâneos não ocupem a mesma vaga. Uma EJ só se repete numa tripulação quando tem mais gente do que o número de tripulações.
 - **Segurança.** A API responde com objetos próprios e nunca devolve senha nem hash. Senhas usam BCrypt, com no máximo 72 bytes.
 
@@ -310,7 +313,7 @@ cd backend
 ./mvnw test
 ```
 
-São 56 testes, que sobem a aplicação inteira contra o banco local e, por isso, também aplicam as migrações pendentes. Os testes que gravam no banco usam `@Transactional` e são desfeitos no fim. Os relatórios ficam em `backend/target/surefire-reports/`.
+São 58 testes, que sobem a aplicação inteira contra o banco local e, por isso, também aplicam as migrações pendentes. Os testes que gravam no banco usam `@Transactional` e são desfeitos no fim. Os relatórios ficam em `backend/target/surefire-reports/`.
 
 O frontend não tem testes automatizados. A verificação dele é o lint e o build:
 

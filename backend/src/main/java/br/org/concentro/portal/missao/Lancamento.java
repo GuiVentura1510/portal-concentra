@@ -14,8 +14,8 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 
 // Uma linha do extrato de pontos. Espelha a tabela "lancamento" (V6 e V7).
-// Nas missões individuais, guarda a pessoa e a tripulação dela no momento da
-// aprovação; o ranking decide se esses pontos somam para a tripulação.
+// Nas missões individuais, guarda a pessoa (e, só para consulta, a tripulação dela
+// no momento da aprovação); esses pontos contam só no ranking individual.
 // Os pontos são copiados da missão no momento da aprovação: se o staff mudar os
 // pontos da missão depois, o que já foi lançado não muda.
 @Entity

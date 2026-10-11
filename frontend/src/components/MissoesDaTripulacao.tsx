@@ -106,7 +106,11 @@ function CartaoMissao({
       </p>
       {missao.descricao && <p className="text-sm whitespace-pre-line">{missao.descricao}</p>}
 
-      {minha?.status === "APROVADA" && <p className="text-sm font-medium">Cumprida! +{missao.pontos} pontos.</p>}
+      {minha?.status === "APROVADA" && (
+        <p className="text-sm font-medium">
+          Cumprida! +{missao.pontos} pontos {individual ? "no seu ranking individual" : "para a tripulação"}.
+        </p>
+      )}
       {minha?.status === "PENDENTE" && <p className="text-sm">Resposta enviada. Aguardando o staff.</p>}
       {minha?.status === "RECUSADA" && (
         <p className="text-sm text-destructive">

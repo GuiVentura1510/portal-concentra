@@ -41,4 +41,10 @@ public class MissaoController {
     public List<PosicaoRanking> ranking() {
         return ranking.ranking();
     }
+
+    // Ranking individual: só as missões individuais, com a posição de quem pediu.
+    @GetMapping("/api/ranking/individual")
+    public RankingIndividual rankingIndividual(@AuthenticationPrincipal Jwt token) {
+        return ranking.individual(Long.valueOf(token.getSubject()));
+    }
 }

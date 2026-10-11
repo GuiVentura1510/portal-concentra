@@ -33,8 +33,8 @@ const FORMAS: { valor: FormaConclusao; rotulo: string }[] = [
 ];
 
 const ALCANCES: { valor: AlcanceMissao; rotulo: string }[] = [
-  { valor: "TRIPULACAO", rotulo: "Da tripulação: a tripulação cumpre junta" },
-  { valor: "INDIVIDUAL", rotulo: "Individual: cada pessoa cumpre a sua" },
+  { valor: "TRIPULACAO", rotulo: "Da tripulação: cumprem juntos; conta no ranking das tripulações" },
+  { valor: "INDIVIDUAL", rotulo: "Individual: cada um cumpre a sua; conta no ranking individual" },
 ];
 
 // Missão sendo editada: "nova", uma existente, ou nenhuma (só a lista).

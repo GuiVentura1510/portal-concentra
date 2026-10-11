@@ -32,7 +32,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 // Missões individuais: cada pessoa envia a sua, o staff aprova ou marca direto,
-// e os pontos somam no ranking da tripulação da pessoa (configuração padrão).
+// e os pontos contam só no ranking individual, nunca no das tripulações.
 @SpringBootTest(properties = {"app.staff.emails=staff.teste@exemplo.com", "app.ranking.cache=PT0S"})
 @AutoConfigureMockMvc
 @Transactional
@@ -135,7 +135,7 @@ class MissaoIndividualTests {
     }
 
     @Test
-    void cadaMembroEnviaASuaEOsPontosSomamNaTripulacao() throws Exception {
+    void cadaMembroEnviaASuaEPontuaSoNoRankingIndividual() throws Exception {
         Missao m = individual(FormaConclusao.ENVIO_CAPITAO, null);
         Congressista eu = pessoa(0);
         Congressista colega = colegaDe(0);
@@ -164,11 +164,49 @@ class MissaoIndividualTests {
                 .andExpect(status().isOk());
         }
 
-        // 2 pessoas x 10 pontos para a tripulação; nenhuma missão da tripulação cumprida.
+        // A tripulação não ganha nada com as missões individuais.
+        mvc.perform(get("/api/ranking").header("Authorization", meuToken))
+            .andExpect(jsonPath("$[?(@.tripulacaoId == " + tripulacaoId + ")].pontos").value(hasItem(0)));
+
+        // No ranking individual, as duas pessoas têm 10 pontos e dividem o 1º lugar.
+        mvc.perform(get("/api/ranking/individual").header("Authorization", meuToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.total").value(2))
+            .andExpect(jsonPath("$.posicoes[0].posicao").value(1))
+            .andExpect(jsonPath("$.posicoes[1].posicao").value(1))
+            .andExpect(jsonPath("$.minha.congressistaId").value(eu.getId()))
+            .andExpect(jsonPath("$.minha.pontos").value(10))
+            .andExpect(jsonPath("$.minha.missoesCumpridas").value(1));
+    }
+
+    // Missão da tripulação conta só no ranking das tripulações; a individual, só no individual.
+    @Test
+    void rankingsSeparados() throws Exception {
+        Instant agora = Instant.now();
+        Missao daTripulacao = missoes.saveAndFlush(new Missao("Da tripulação", "", 50, null,
+            agora.minus(Duration.ofHours(1)), agora.plus(Duration.ofHours(1)), FormaConclusao.STAFF_MARCA, true));
+        Missao individual = individual(FormaConclusao.STAFF_MARCA, null);
+        Congressista eu = pessoa(6);
+        Long tripulacaoId = eu.getTripulacao().getId();
+        String staff = token("staff.teste@exemplo.com");
+
+        marcar(staff, daTripulacao.getId(), "{\"tripulacaoId\": " + tripulacaoId + "}").andExpect(status().isOk());
+        marcar(staff, individual.getId(), "{\"congressistaId\": " + eu.getId() + "}").andExpect(status().isOk());
+
+        String meuToken = token(eu.getEmail());
         mvc.perform(get("/api/ranking").header("Authorization", meuToken))
             .andExpect(jsonPath("$[0].tripulacaoId").value(tripulacaoId))
-            .andExpect(jsonPath("$[0].pontos").value(20))
-            .andExpect(jsonPath("$[0].missoesCumpridas").value(0));
+            .andExpect(jsonPath("$[0].pontos").value(50))
+            .andExpect(jsonPath("$[0].missoesCumpridas").value(1));
+        mvc.perform(get("/api/ranking/individual").header("Authorization", meuToken))
+            .andExpect(jsonPath("$.total").value(1))
+            .andExpect(jsonPath("$.minha.pontos").value(10))
+            .andExpect(jsonPath("$.minha.posicao").value(1));
+
+        // Quem ainda não pontuou vê o ranking, mas sem posição própria.
+        mvc.perform(get("/api/ranking/individual").header("Authorization", token(pessoa(7).getEmail())))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.minha").doesNotExist());
     }
 
     @Test
