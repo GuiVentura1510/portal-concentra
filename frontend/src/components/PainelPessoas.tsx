@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from "react";
 
+import type { MissaoMarcavel } from "@/components/CartaoTripulacaoStaff";
+import { Selecao } from "@/components/Selecao";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api, ErroApi } from "@/lib/api";
@@ -22,18 +24,18 @@ function extrairEmails(texto: string): string[] {
   return [...new Set(achados)];
 }
 
-// Painel do staff, aba Pessoas: busca, senha esquecida, remoção e cruzamento
-// com a lista de inscritos.
-export function PainelPessoas() {
+// Painel do staff, aba Pessoas: busca, missões individuais marcadas pelo staff,
+// senha esquecida, remoção e cruzamento com a lista de inscritos.
+export function PainelPessoas({ missoesIndividuais }: { missoesIndividuais: MissaoMarcavel[] }) {
   return (
     <div className="flex flex-col gap-6">
-      <Busca />
-      <Cruzamento />
+      <Busca missoes={missoesIndividuais} />
+      <Cruzamento missoes={missoesIndividuais} />
     </div>
   );
 }
 
-function Busca() {
+function Busca({ missoes }: { missoes: MissaoMarcavel[] }) {
   const [resultado, setResultado] = useState<Pessoa[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -65,6 +67,7 @@ function Busca() {
         <CartaoPessoa
           key={p.id}
           pessoa={p}
+          missoes={missoes}
           aoRemover={() => setResultado((lista) => (lista ?? []).filter((x) => x.id !== p.id))}
         />
       ))}
@@ -72,7 +75,7 @@ function Busca() {
   );
 }
 
-function Cruzamento() {
+function Cruzamento({ missoes }: { missoes: MissaoMarcavel[] }) {
   const [texto, setTexto] = useState("");
   const [fora, setFora] = useState<Pessoa[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -126,6 +129,7 @@ function Cruzamento() {
         <CartaoPessoa
           key={p.id}
           pessoa={p}
+          missoes={missoes}
           aoRemover={() => setFora((lista) => (lista ?? []).filter((x) => x.id !== p.id))}
         />
       ))}
@@ -135,7 +139,15 @@ function Cruzamento() {
 
 type Confirmacao = "senha" | "remover" | null;
 
-function CartaoPessoa({ pessoa, aoRemover }: { pessoa: Pessoa; aoRemover: () => void }) {
+function CartaoPessoa({
+  pessoa,
+  missoes,
+  aoRemover,
+}: {
+  pessoa: Pessoa;
+  missoes: MissaoMarcavel[];
+  aoRemover: () => void;
+}) {
   const [confirmando, setConfirmando] = useState<Confirmacao>(null);
   const [senha, setSenha] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -191,6 +203,8 @@ function CartaoPessoa({ pessoa, aoRemover }: { pessoa: Pessoa; aoRemover: () => 
         </p>
       )}
 
+      {!pessoa.staff && missoes.length > 0 && <RegistrarIndividual pessoa={pessoa} missoes={missoes} />}
+
       {confirmando === null ? (
         <div className="grid grid-cols-2 gap-2">
           <Button variant="outline" className="h-10" onClick={() => setConfirmando("senha")}>
@@ -223,5 +237,65 @@ function CartaoPessoa({ pessoa, aoRemover }: { pessoa: Pessoa; aoRemover: () => 
         </p>
       )}
     </article>
+  );
+}
+
+// Registro de uma missão individual cumprida por esta pessoa (forma "staff marca").
+function RegistrarIndividual({ pessoa, missoes }: { pessoa: Pessoa; missoes: MissaoMarcavel[] }) {
+  const [missaoId, setMissaoId] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [aviso, setAviso] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
+
+  async function registrar() {
+    setSalvando(true);
+    setAviso(null);
+    const missao = missoes.find((m) => m.id === Number(missaoId));
+    try {
+      await api(`/api/staff/missoes/${missaoId}/marcar`, {
+        metodo: "POST",
+        corpo: { congressistaId: pessoa.id },
+        autenticado: true,
+      });
+      setAviso({ tipo: "ok", texto: `Missão registrada: +${missao?.pontos ?? 0} pontos para ${pessoa.nome}.` });
+      setMissaoId("");
+    } catch (e) {
+      setAviso({
+        tipo: "erro",
+        texto:
+          e instanceof ErroApi && e.status === 409
+            ? "Não registrado: a pessoa já cumpriu esta missão, tem envio na fila, ou as vagas acabaram."
+            : "Não foi possível registrar. Tente de novo.",
+      });
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <label htmlFor={`individual-${pessoa.id}`} className="text-sm font-medium">
+        Registrar missão individual cumprida
+      </label>
+      <div className="flex gap-2">
+        <Selecao id={`individual-${pessoa.id}`} value={missaoId} onChange={(e) => setMissaoId(e.target.value)}>
+          <option value="" disabled>
+            Escolha a missão
+          </option>
+          {missoes.map((missao) => (
+            <option key={missao.id} value={missao.id}>
+              {missao.titulo} ({missao.pontos} pts)
+            </option>
+          ))}
+        </Selecao>
+        <Button className="h-10" disabled={salvando || missaoId === ""} onClick={registrar}>
+          Registrar
+        </Button>
+      </div>
+      {aviso && (
+        <p role="status" className={aviso.tipo === "ok" ? "text-sm" : "text-sm text-destructive"}>
+          {aviso.texto}
+        </p>
+      )}
+    </div>
   );
 }

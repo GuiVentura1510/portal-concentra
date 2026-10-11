@@ -34,11 +34,12 @@ public interface CongressistaRepository extends JpaRepository<Congressista, Long
         + "order by c.nome")
     List<Congressista> buscar(@Param("termo") String termo, Pageable pagina);
 
-    // A pessoa aparece no histórico do jogo (enviou ou avaliou missão, lançou pontos)
+    // A pessoa aparece no histórico do jogo (enviou, cumpriu ou avaliou missão, lançou pontos)
     // ou é capitã? Nesse caso o cadastro não pode ser removido.
     @Query(nativeQuery = true, value = """
-        select exists (select 1 from conclusao where enviada_por = :id or avaliada_por = :id)
-            or exists (select 1 from lancamento where criado_por = :id)
+        select exists (select 1 from conclusao
+                       where enviada_por = :id or avaliada_por = :id or congressista_id = :id)
+            or exists (select 1 from lancamento where criado_por = :id or congressista_id = :id)
             or exists (select 1 from tripulacao where capitao_id = :id)
         """)
     boolean temHistorico(@Param("id") Long id);

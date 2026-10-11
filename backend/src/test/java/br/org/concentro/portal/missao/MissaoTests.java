@@ -1,6 +1,8 @@
 package br.org.concentro.portal.missao;
 
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -87,7 +89,8 @@ class MissaoTests {
             .andExpect(jsonPath("$.id").isNumber())
             .andExpect(jsonPath("$.inicio").value("2026-10-17T13:30:00Z"))
             .andExpect(jsonPath("$.fim").value("2026-10-17T14:20:00Z"))
-            .andExpect(jsonPath("$.conclusao").value("STAFF_MARCA"));
+            .andExpect(jsonPath("$.conclusao").value("STAFF_MARCA"))
+            .andExpect(jsonPath("$.alcance").value("TRIPULACAO"));
 
         mvc.perform(get("/api/staff/missoes").header("Authorization", staff))
             .andExpect(status().isOk())
@@ -127,6 +130,67 @@ class MissaoTests {
         String congressista = token("congressista.teste@exemplo.com");
         criar(congressista, MAPA_DAS_DORES).andExpect(status().isForbidden());
         mvc.perform(get("/api/staff/missoes").header("Authorization", congressista))
+            .andExpect(status().isForbidden());
+    }
+
+    private long idCriado(String staff, String corpo) throws Exception {
+        String criada = criar(staff, corpo).andReturn().getResponse().getContentAsString();
+        return ((Number) JsonPath.read(criada, "$.id")).longValue();
+    }
+
+    // A conta de congressista deste teste cumpre a missão individual, marcada pelo staff.
+    private void marcarCongressista(String staff, long missaoId) throws Exception {
+        Long pessoaId = congressistas.findByEmail("congressista.teste@exemplo.com").orElseThrow().getId();
+        mvc.perform(post("/api/staff/missoes/" + missaoId + "/marcar").header("Authorization", staff)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"congressistaId\": " + pessoaId + "}"))
+            .andExpect(status().isOk());
+    }
+
+    private static final String INDIVIDUAL = MAPA_DAS_DORES.replace("\"visivel\": true",
+        "\"visivel\": true, \"alcance\": \"INDIVIDUAL\"");
+
+    @Test
+    void excluiMissaoSemRespostas() throws Exception {
+        String staff = token("staff.teste@exemplo.com");
+        long id = idCriado(staff, MAPA_DAS_DORES);
+        mvc.perform(delete("/api/staff/missoes/" + id).header("Authorization", staff))
+            .andExpect(status().isNoContent());
+        mvc.perform(get("/api/staff/missoes").header("Authorization", staff))
+            .andExpect(jsonPath("$[*].id", not(hasItem((int) id))));
+        mvc.perform(delete("/api/staff/missoes/" + id).header("Authorization", staff))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void naoExcluiMissaoComRespostas() throws Exception {
+        String staff = token("staff.teste@exemplo.com");
+        long id = idCriado(staff, INDIVIDUAL);
+        marcarCongressista(staff, id);
+        mvc.perform(delete("/api/staff/missoes/" + id).header("Authorization", staff))
+            .andExpect(status().isConflict());
+    }
+
+    @Test
+    void naoTrocaAlcanceDepoisDeRespostas() throws Exception {
+        String staff = token("staff.teste@exemplo.com");
+        long id = idCriado(staff, INDIVIDUAL);
+        marcarCongressista(staff, id);
+        String daTripulacao = INDIVIDUAL.replace("\"INDIVIDUAL\"", "\"TRIPULACAO\"");
+        mvc.perform(put("/api/staff/missoes/" + id).header("Authorization", staff)
+                .contentType(MediaType.APPLICATION_JSON).content(daTripulacao))
+            .andExpect(status().isConflict());
+        // Mudar outros campos continua permitido.
+        mvc.perform(put("/api/staff/missoes/" + id).header("Authorization", staff)
+                .contentType(MediaType.APPLICATION_JSON).content(INDIVIDUAL.replace("\"pontos\": 100", "\"pontos\": 120")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.pontos").value(120))
+            .andExpect(jsonPath("$.alcance").value("INDIVIDUAL"));
+    }
+
+    @Test
+    void congressistaNaoExcluiMissao() throws Exception {
+        long id = idCriado(token("staff.teste@exemplo.com"), MAPA_DAS_DORES);
+        mvc.perform(delete("/api/staff/missoes/" + id).header("Authorization", token("congressista.teste@exemplo.com")))
             .andExpect(status().isForbidden());
     }
 }

@@ -20,11 +20,15 @@ public class RankingService {
 
     private final LancamentoRepository lancamentos;
     private final Duration validade;
+    // Os pontos das missões individuais somam no ranking da tripulação da pessoa?
+    private final boolean individuaisNaTripulacao;
     private final AtomicReference<Calculado> guardado = new AtomicReference<>();
 
-    public RankingService(LancamentoRepository lancamentos, @Value("${app.ranking.cache:PT15S}") Duration validade) {
+    public RankingService(LancamentoRepository lancamentos, @Value("${app.ranking.cache:PT15S}") Duration validade,
+            @Value("${app.ranking.individuais-na-tripulacao:true}") boolean individuaisNaTripulacao) {
         this.lancamentos = lancamentos;
         this.validade = validade;
+        this.individuaisNaTripulacao = individuaisNaTripulacao;
     }
 
     @Transactional(readOnly = true)
@@ -40,7 +44,7 @@ public class RankingService {
     }
 
     private List<PosicaoRanking> calcular() {
-        List<Object[]> linhas = lancamentos.placar();
+        List<Object[]> linhas = lancamentos.placar(individuaisNaTripulacao);
         List<PosicaoRanking> posicoes = new ArrayList<>();
         long pontosAnteriores = Long.MIN_VALUE;
         int posicao = 0;

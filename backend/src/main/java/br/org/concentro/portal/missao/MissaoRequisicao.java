@@ -9,6 +9,7 @@ import java.time.OffsetDateTime;
 
 // O que o formulário de missão do staff envia. Os horários chegam com fuso
 // (ex.: 2026-10-17T10:30:00-03:00) e são guardados em UTC.
+// Sem "alcance", a missão nova é da tripulação e a existente mantém o que tinha.
 public record MissaoRequisicao(
     @NotBlank @Size(max = 120) String titulo,
     @Size(max = 4000) String descricao,
@@ -17,5 +18,6 @@ public record MissaoRequisicao(
     OffsetDateTime inicio,
     OffsetDateTime fim,
     @NotNull FormaConclusao conclusao,
-    boolean visivel) {
+    boolean visivel,
+    AlcanceMissao alcance) {
 }

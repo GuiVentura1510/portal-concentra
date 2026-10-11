@@ -13,7 +13,9 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 
-// Uma linha do extrato de pontos de uma tripulação. Espelha a tabela "lancamento" (V6).
+// Uma linha do extrato de pontos. Espelha a tabela "lancamento" (V6 e V7).
+// Nas missões individuais, guarda a pessoa e a tripulação dela no momento da
+// aprovação; o ranking decide se esses pontos somam para a tripulação.
 // Os pontos são copiados da missão no momento da aprovação: se o staff mudar os
 // pontos da missão depois, o que já foi lançado não muda.
 @Entity
@@ -24,9 +26,13 @@ public class Lancamento {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tripulacao_id")
     private Tripulacao tripulacao;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "congressista_id")
+    private Congressista congressista;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "missao_id")
@@ -54,7 +60,10 @@ public class Lancamento {
     }
 
     public Lancamento(Conclusao conclusao, Congressista criadoPor, Instant agora) {
-        this.tripulacao = conclusao.getTripulacao();
+        this.congressista = conclusao.getCongressista();
+        // Na individual, vale a tripulação atual da pessoa: quem enviou antes da
+        // montagem e foi aprovado depois já pontua para a tripulação nova.
+        this.tripulacao = congressista != null ? congressista.getTripulacao() : conclusao.getTripulacao();
         this.missao = conclusao.getMissao();
         this.conclusao = conclusao;
         this.pontos = conclusao.getMissao().getPontos();

@@ -29,7 +29,7 @@ public class Missao {
     @Column(nullable = false)
     private int pontos;
 
-    // Vazio = sem limite de tripulações.
+    // Vazio = sem limite. Conta tripulações ou pessoas, conforme o alcance.
     private Integer vagas;
 
     private Instant inicio;
@@ -43,6 +43,11 @@ public class Missao {
     @Column(nullable = false)
     private boolean visivel;
 
+    // Da tripulação ou individual (V7). Só muda enquanto a missão não tem respostas.
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private AlcanceMissao alcance = AlcanceMissao.TRIPULACAO;
+
     // Vagas já ocupadas. Só muda pelo MissaoRepository.ocuparVaga (V6).
     @Column(name = "vagas_usadas", nullable = false)
     private int vagasUsadas;
@@ -54,6 +59,17 @@ public class Missao {
     public Missao(String titulo, String descricao, int pontos, Integer vagas, Instant inicio, Instant fim,
             FormaConclusao conclusao, boolean visivel) {
         atualizar(titulo, descricao, pontos, vagas, inicio, fim, conclusao, visivel);
+    }
+
+    public Missao(String titulo, String descricao, int pontos, Integer vagas, Instant inicio, Instant fim,
+            FormaConclusao conclusao, boolean visivel, AlcanceMissao alcance) {
+        atualizar(titulo, descricao, pontos, vagas, inicio, fim, conclusao, visivel, alcance);
+    }
+
+    public void atualizar(String titulo, String descricao, int pontos, Integer vagas, Instant inicio,
+            Instant fim, FormaConclusao conclusao, boolean visivel, AlcanceMissao alcance) {
+        atualizar(titulo, descricao, pontos, vagas, inicio, fim, conclusao, visivel);
+        this.alcance = alcance;
     }
 
     public void atualizar(String titulo, String descricao, int pontos, Integer vagas, Instant inicio,
@@ -102,6 +118,14 @@ public class Missao {
 
     public boolean isVisivel() {
         return visivel;
+    }
+
+    public AlcanceMissao getAlcance() {
+        return alcance;
+    }
+
+    public boolean individual() {
+        return alcance == AlcanceMissao.INDIVIDUAL;
     }
 
     public int getVagasUsadas() {

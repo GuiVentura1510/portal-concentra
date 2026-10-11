@@ -8,6 +8,7 @@ import { api, ErroApi } from "@/lib/api";
 import { apiParaCampo, campoParaApi, textoJanela } from "@/lib/datas";
 
 type FormaConclusao = "ENVIO_CAPITAO" | "STAFF_MARCA";
+export type AlcanceMissao = "TRIPULACAO" | "INDIVIDUAL";
 export type MissaoStaff = {
   id: number;
   titulo: string;
@@ -19,19 +20,29 @@ export type MissaoStaff = {
   conclusao: FormaConclusao;
   visivel: boolean;
   vagasUsadas: number;
+  alcance: AlcanceMissao;
 };
 type Missao = MissaoStaff;
 
 const FORMAS: { valor: FormaConclusao; rotulo: string }[] = [
-  { valor: "ENVIO_CAPITAO", rotulo: "O capitão envia uma resposta e o staff aprova" },
+  {
+    valor: "ENVIO_CAPITAO",
+    rotulo: "Resposta pelo portal, aprovada pelo staff (nas da tripulação, quem envia é o capitão)",
+  },
   { valor: "STAFF_MARCA", rotulo: "O staff marca como cumprida" },
+];
+
+const ALCANCES: { valor: AlcanceMissao; rotulo: string }[] = [
+  { valor: "TRIPULACAO", rotulo: "Da tripulação: a tripulação cumpre junta" },
+  { valor: "INDIVIDUAL", rotulo: "Individual: cada pessoa cumpre a sua" },
 ];
 
 // Missão sendo editada: "nova", uma existente, ou nenhuma (só a lista).
 type Edicao = { tipo: "nova" } | { tipo: "existente"; missao: Missao } | null;
 
-// Painel do staff, parte 2: criar e editar missões.
-export function PainelMissoes() {
+// Painel do staff, parte 2: criar, editar e excluir missões. "aoMudar" avisa o
+// painel para atualizar as listas de "Registrar missão cumprida".
+export function PainelMissoes({ aoMudar }: { aoMudar: () => void }) {
   const [missoes, setMissoes] = useState<Missao[] | null>(null);
   const [falha, setFalha] = useState(false);
   const [edicao, setEdicao] = useState<Edicao>(null);
@@ -48,6 +59,12 @@ export function PainelMissoes() {
         : [...atual, salva];
     });
     setEdicao(null);
+    aoMudar();
+  }
+
+  function aoExcluir(id: number) {
+    setMissoes((lista) => (lista ?? []).filter((m) => m.id !== id));
+    aoMudar();
   }
 
   if (falha) return <p className="text-sm">Não foi possível carregar as missões.</p>;
@@ -70,27 +87,92 @@ export function PainelMissoes() {
       </Button>
       {missoes.length === 0 && <p className="text-sm">Nenhuma missão cadastrada ainda.</p>}
       {missoes.map((missao) => (
-        <section key={missao.id} className="flex flex-col gap-2 rounded-lg border p-3">
-          <div className="flex items-start justify-between gap-2">
-            <p className="font-semibold">{missao.titulo}</p>
-            <span className="shrink-0 text-xs text-muted-foreground">
-              {missao.visivel ? "Visível" : "Oculta"}
-            </span>
-          </div>
-          <p className="text-sm">
-            {missao.pontos} pontos ·{" "}
-            {missao.vagas ? `${missao.vagasUsadas} de ${missao.vagas} vagas ocupadas` : "sem limite de vagas"}
-          </p>
-          <p className="text-sm text-muted-foreground">{textoJanela(missao.inicio, missao.fim)}</p>
-          <p className="text-sm text-muted-foreground">
-            {FORMAS.find((f) => f.valor === missao.conclusao)?.rotulo}
-          </p>
-          <Button variant="outline" className="h-10" onClick={() => setEdicao({ tipo: "existente", missao })}>
-            Editar
-          </Button>
-        </section>
+        <CartaoMissaoStaff
+          key={missao.id}
+          missao={missao}
+          aoEditar={() => setEdicao({ tipo: "existente", missao })}
+          aoExcluir={() => aoExcluir(missao.id)}
+        />
       ))}
     </div>
+  );
+}
+
+// Uma missão na lista do staff, com editar e excluir (confirmação em dois toques).
+function CartaoMissaoStaff({
+  missao,
+  aoEditar,
+  aoExcluir,
+}: {
+  missao: Missao;
+  aoEditar: () => void;
+  aoExcluir: () => void;
+}) {
+  const [confirmando, setConfirmando] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function excluir() {
+    setExcluindo(true);
+    setErro(null);
+    try {
+      await api(`/api/staff/missoes/${missao.id}`, { metodo: "DELETE", autenticado: true });
+      aoExcluir();
+    } catch (e) {
+      setErro(
+        e instanceof ErroApi && e.status === 409
+          ? 'Não excluída: esta missão já tem respostas ou pontos. Para tirá-la do ar, edite e desmarque "visível".'
+          : "Não foi possível excluir. Tente de novo.",
+      );
+      setConfirmando(false);
+    } finally {
+      setExcluindo(false);
+    }
+  }
+
+  const unidade = missao.alcance === "INDIVIDUAL" ? "pessoas" : "tripulações";
+
+  return (
+    <section className="flex flex-col gap-2 rounded-lg border p-3">
+      <div className="flex items-start justify-between gap-2">
+        <p className="font-semibold">{missao.titulo}</p>
+        <span className="shrink-0 text-xs text-muted-foreground">{missao.visivel ? "Visível" : "Oculta"}</span>
+      </div>
+      <p className="text-sm">
+        {missao.alcance === "INDIVIDUAL" ? "Individual" : "Da tripulação"} · {missao.pontos} pontos ·{" "}
+        {missao.vagas ? `${missao.vagasUsadas} de ${missao.vagas} vagas (${unidade}) ocupadas` : "sem limite de vagas"}
+      </p>
+      <p className="text-sm text-muted-foreground">{textoJanela(missao.inicio, missao.fim)}</p>
+      <p className="text-sm text-muted-foreground">{FORMAS.find((f) => f.valor === missao.conclusao)?.rotulo}</p>
+
+      {!confirmando ? (
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="outline" className="h-10" onClick={aoEditar}>
+            Editar
+          </Button>
+          <Button variant="outline" className="h-10" onClick={() => setConfirmando(true)}>
+            Excluir
+          </Button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-medium">Excluir esta missão? Não dá para desfazer.</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="destructive" className="h-10" disabled={excluindo} onClick={excluir}>
+              {excluindo ? "Excluindo..." : "Sim, excluir"}
+            </Button>
+            <Button variant="outline" className="h-10" disabled={excluindo} onClick={() => setConfirmando(false)}>
+              Voltar
+            </Button>
+          </div>
+        </div>
+      )}
+      {erro && (
+        <p role="alert" className="text-sm text-destructive">
+          {erro}
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -119,6 +201,7 @@ function FormMissao({
       inicio: campoParaApi(String(dados.get("inicio") ?? "")),
       fim: campoParaApi(String(dados.get("fim") ?? "")),
       conclusao: dados.get("conclusao"),
+      alcance: dados.get("alcance"),
       visivel: dados.get("visivel") === "on",
     };
 
@@ -133,7 +216,9 @@ function FormMissao({
       setErro(
         e instanceof ErroApi && e.status === 400
           ? "Algum dado não foi aceito. Confira os campos; o fim precisa ser depois do início."
-          : "Não foi possível salvar. Tente de novo.",
+          : e instanceof ErroApi && e.status === 409
+            ? "Esta missão já tem respostas: não dá para trocar entre individual e da tripulação."
+            : "Não foi possível salvar. Tente de novo.",
       );
     } finally {
       setEnviando(false);
@@ -146,7 +231,7 @@ function FormMissao({
       <Campo rotulo="Título" id="titulo">
         <Input id="titulo" name="titulo" required maxLength={120} defaultValue={missao?.titulo} className="h-10" />
       </Campo>
-      <Campo rotulo="Descrição (o desafio, como aparece para as tripulações)" id="descricao">
+      <Campo rotulo="Descrição (o desafio, como aparece para os congressistas)" id="descricao">
         <textarea
           id="descricao"
           name="descricao"
@@ -193,6 +278,15 @@ function FormMissao({
           />
         </Campo>
       </div>
+      <Campo rotulo="Para quem" id="alcance">
+        <Selecao id="alcance" name="alcance" required defaultValue={missao?.alcance ?? "TRIPULACAO"}>
+          {ALCANCES.map((alcance) => (
+            <option key={alcance.valor} value={alcance.valor}>
+              {alcance.rotulo}
+            </option>
+          ))}
+        </Selecao>
+      </Campo>
       <Campo rotulo="Como é concluída" id="conclusao">
         <Selecao id="conclusao" name="conclusao" required defaultValue={missao?.conclusao ?? "ENVIO_CAPITAO"}>
           {FORMAS.map((forma) => (

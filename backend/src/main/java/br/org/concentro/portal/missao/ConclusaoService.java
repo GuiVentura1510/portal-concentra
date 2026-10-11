@@ -1,5 +1,6 @@
 package br.org.concentro.portal.missao;
 
+import br.org.concentro.portal.acesso.EquipeStaff;
 import br.org.concentro.portal.cadastro.Congressista;
 import br.org.concentro.portal.cadastro.CongressistaRepository;
 import br.org.concentro.portal.missao.MissaoDaTripulacao.MinhaConclusao;
@@ -15,8 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-// O jogo em si: a tripulação vê as missões, o capitão envia, o staff aprova,
-// recusa ou marca direto, e cada aprovação vira um lançamento no extrato.
+// O jogo em si: o congressista vê as missões, envia a resposta (o capitão, nas da
+// tripulação; a própria pessoa, nas individuais), o staff aprova, recusa ou marca
+// direto, e cada aprovação vira um lançamento no extrato.
 @Service
 public class ConclusaoService {
 
@@ -25,55 +27,63 @@ public class ConclusaoService {
     private final LancamentoRepository lancamentos;
     private final CongressistaRepository congressistas;
     private final TripulacaoRepository tripulacoes;
+    private final EquipeStaff equipe;
 
     public ConclusaoService(MissaoRepository missoes, ConclusaoRepository conclusoes,
             LancamentoRepository lancamentos, CongressistaRepository congressistas,
-            TripulacaoRepository tripulacoes) {
+            TripulacaoRepository tripulacoes, EquipeStaff equipe) {
         this.missoes = missoes;
         this.conclusoes = conclusoes;
         this.lancamentos = lancamentos;
         this.congressistas = congressistas;
         this.tripulacoes = tripulacoes;
+        this.equipe = equipe;
     }
 
-    // Missões visíveis, com a situação de cada uma para a tripulação de quem está logado.
+    // Missões visíveis, com a situação de cada uma para quem está logado.
     @Transactional(readOnly = true)
     public List<MissaoDaTripulacao> paraCongressista(Long congressistaId) {
         Congressista eu = buscarCongressista(congressistaId);
         Tripulacao tripulacao = eu.getTripulacao();
 
-        // A conclusão mais recente de cada missão (a lista vem em ordem de envio).
-        Map<Long, Conclusao> ultima = new HashMap<>();
+        // A conclusão mais recente de cada missão (as listas vêm em ordem de envio).
+        Map<Long, Conclusao> daTripulacao = new HashMap<>();
         if (tripulacao != null) {
             for (Conclusao c : conclusoes.daTripulacao(tripulacao.getId())) {
-                ultima.put(c.getMissao().getId(), c);
+                daTripulacao.put(c.getMissao().getId(), c);
             }
         }
-        boolean envio = podeEnviarPelaTripulacao(eu, tripulacao);
+        Map<Long, Conclusao> minhas = new HashMap<>();
+        for (Conclusao c : conclusoes.doCongressista(eu.getId())) {
+            minhas.put(c.getMissao().getId(), c);
+        }
+        boolean envioPelaTripulacao = podeEnviarPelaTripulacao(eu, tripulacao);
+        boolean staff = equipe.ehStaff(eu.getEmail());
         Instant agora = Instant.now();
 
         return missoes.visiveisEmOrdem().stream().map(m -> {
-            Conclusao c = ultima.get(m.getId());
+            Conclusao c = m.individual() ? minhas.get(m.getId()) : daTripulacao.get(m.getId());
             boolean cumprida = c != null && c.getStatus() == StatusConclusao.APROVADA;
             boolean ativa = c != null && c.getStatus() != StatusConclusao.RECUSADA;
             SituacaoMissao situacao = situacao(m, agora, cumprida);
-            boolean possoEnviar = envio && m.getConclusao() == FormaConclusao.ENVIO_CAPITAO
+            boolean posso = m.individual() ? !staff : envioPelaTripulacao;
+            boolean possoEnviar = posso && m.getConclusao() == FormaConclusao.ENVIO_CAPITAO
                 && situacao == SituacaoMissao.ABERTA && !ativa;
             Integer restantes = m.getVagas() == null ? null : Math.max(0, m.getVagas() - m.getVagasUsadas());
             MinhaConclusao minha = c == null ? null
                 : new MinhaConclusao(c.getStatus(), c.getResposta(), c.getMotivoRecusa());
             return new MissaoDaTripulacao(m.getId(), m.getTitulo(), m.getDescricao(), m.getPontos(), m.getVagas(),
-                restantes, m.getInicio(), m.getFim(), m.getConclusao(), situacao, minha, possoEnviar);
+                restantes, m.getInicio(), m.getFim(), m.getConclusao(), m.getAlcance(), situacao, minha,
+                possoEnviar);
         }).toList();
     }
 
-    // O capitão envia a resposta. Fica pendente até o staff avaliar.
+    // Envio de uma resposta. Fica pendente até o staff avaliar.
     @Transactional
     public MinhaConclusao enviar(Long missaoId, Long congressistaId, String texto) {
         Congressista eu = buscarCongressista(congressistaId);
-        Tripulacao tripulacao = eu.getTripulacao();
-        if (tripulacao == null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Você ainda não tem tripulação.");
+        if (equipe.ehStaff(eu.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Contas do staff não participam das missões.");
         }
         Missao missao = missoes.findById(missaoId).filter(Missao::isVisivel)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Missão não encontrada."));
@@ -89,18 +99,35 @@ public class ConclusaoService {
                 // Pode seguir.
             }
         }
-        if (!podeEnviarPelaTripulacao(eu, tripulacao)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Só o capitão envia as respostas da tripulação.");
+
+        Conclusao conclusao;
+        String jaEnviou;
+        if (missao.individual()) {
+            jaEnviou = "Você já enviou esta missão.";
+            if (conclusoes.existeAtivaIndividual(missao.getId(), eu.getId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, jaEnviou);
+            }
+            conclusao = Conclusao.enviadaIndividual(missao, eu, texto.trim(), agora);
+        } else {
+            jaEnviou = "Sua tripulação já enviou esta missão.";
+            Tripulacao tripulacao = eu.getTripulacao();
+            if (tripulacao == null) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Você ainda não tem tripulação.");
+            }
+            if (!podeEnviarPelaTripulacao(eu, tripulacao)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Só o capitão envia as respostas da tripulação.");
+            }
+            if (conclusoes.existeAtiva(missao.getId(), tripulacao.getId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, jaEnviou);
+            }
+            conclusao = Conclusao.enviada(missao, tripulacao, eu, texto.trim(), agora);
         }
-        if (conclusoes.existeAtiva(missao.getId(), tripulacao.getId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Sua tripulação já enviou esta missão.");
-        }
-        Conclusao conclusao = Conclusao.enviada(missao, tripulacao, eu, texto.trim(), agora);
         try {
             conclusoes.saveAndFlush(conclusao);
         } catch (DataIntegrityViolationException e) {
-            // Dois membros enviando ao mesmo tempo: o índice único do banco barra o segundo.
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Sua tripulação já enviou esta missão.");
+            // Dois envios ao mesmo tempo: o índice único do banco barra o segundo.
+            throw new ResponseStatusException(HttpStatus.CONFLICT, jaEnviou);
         }
         return new MinhaConclusao(conclusao.getStatus(), conclusao.getResposta(), null);
     }
@@ -132,11 +159,20 @@ public class ConclusaoService {
         return ConclusaoResposta.de(conclusao);
     }
 
-    // O staff marca direto que a tripulação cumpriu (ex.: ao carimbar o passaporte).
+    // O staff marca direto que a tripulação (ou a pessoa, nas individuais) cumpriu,
+    // por exemplo ao carimbar o passaporte.
     @Transactional
-    public ConclusaoResposta marcar(Long missaoId, Long tripulacaoId, Long staffId) {
-        if (!missoes.existsById(missaoId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Missão não encontrada.");
+    public ConclusaoResposta marcar(Long missaoId, MarcarRequisicao alvo, Long staffId) {
+        Missao encontrada = missoes.findById(missaoId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Missão não encontrada."));
+        return encontrada.individual()
+            ? marcarPessoa(missaoId, alvo.congressistaId(), staffId)
+            : marcarTripulacao(missaoId, alvo.tripulacaoId(), staffId);
+    }
+
+    private ConclusaoResposta marcarTripulacao(Long missaoId, Long tripulacaoId, Long staffId) {
+        if (tripulacaoId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Esta missão é da tripulação: escolha a tripulação.");
         }
         if (!tripulacoes.existsById(tripulacaoId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Tripulação não encontrada.");
@@ -151,11 +187,39 @@ public class ConclusaoService {
         Tripulacao tripulacao = tripulacoes.findById(tripulacaoId).orElseThrow();
         Congressista staff = buscarCongressista(staffId);
         Instant agora = Instant.now();
-        Conclusao conclusao = Conclusao.marcadaPeloStaff(missao, tripulacao, staff, agora);
+        return salvarMarcada(Conclusao.marcadaPeloStaff(missao, tripulacao, staff, agora), staff, agora,
+            "Esta tripulação já cumpriu esta missão.");
+    }
+
+    private ConclusaoResposta marcarPessoa(Long missaoId, Long congressistaId, Long staffId) {
+        if (congressistaId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Esta missão é individual: escolha a pessoa.");
+        }
+        Congressista alvo = congressistas.findById(congressistaId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pessoa não encontrada."));
+        if (equipe.ehStaff(alvo.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Contas do staff não participam das missões.");
+        }
+        if (conclusoes.existeAtivaIndividual(missaoId, congressistaId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Esta pessoa já cumpriu esta missão ou tem um envio esperando na fila.");
+        }
+        ocuparVaga(missaoId);
+        // ocuparVaga limpa o contexto do JPA; tudo é lido depois dela.
+        Missao missao = missoes.findById(missaoId).orElseThrow();
+        Congressista pessoa = congressistas.findById(congressistaId).orElseThrow();
+        Congressista staff = buscarCongressista(staffId);
+        Instant agora = Instant.now();
+        return salvarMarcada(Conclusao.marcadaParaPessoa(missao, pessoa, staff, agora), staff, agora,
+            "Esta pessoa já cumpriu esta missão.");
+    }
+
+    private ConclusaoResposta salvarMarcada(Conclusao conclusao, Congressista staff, Instant agora,
+            String jaCumprida) {
         try {
             conclusoes.saveAndFlush(conclusao);
         } catch (DataIntegrityViolationException e) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Esta tripulação já cumpriu esta missão.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, jaCumprida);
         }
         lancar(conclusao, staff, agora);
         return ConclusaoResposta.de(conclusao);

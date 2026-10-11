@@ -35,3 +35,7 @@ app:
   ranking:
     # Por quanto tempo o ranking calculado é reaproveitado (regra do README: 10 a 15 s).
     cache: PT15S
+    # Os pontos das missões individuais somam no ranking da tripulação da pessoa?
+    # Decisão pendente da organização; para mudar sem publicar código, crie a
+    # variável INDIVIDUAIS_NA_TRIPULACAO=false no Render.
+    individuais-na-tripulacao: ${INDIVIDUAIS_NA_TRIPULACAO:true}

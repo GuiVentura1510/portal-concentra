@@ -15,7 +15,9 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 
-// Uma tentativa de uma tripulação cumprir uma missão. Espelha a tabela "conclusao" (V6).
+// Uma tentativa de cumprir uma missão. Espelha a tabela "conclusao" (V6 e V7).
+// Nas missões da tripulação, só a tripulação é preenchida. Nas individuais, a pessoa
+// é preenchida e a tripulação dela também, se ela já tiver uma.
 @Entity
 @Table(name = "conclusao")
 public class Conclusao {
@@ -28,9 +30,14 @@ public class Conclusao {
     @JoinColumn(name = "missao_id")
     private Missao missao;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tripulacao_id")
     private Tripulacao tripulacao;
+
+    // Quem cumpriu, nas missões individuais. Vazio nas missões da tripulação.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "congressista_id")
+    private Congressista congressista;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -87,6 +94,34 @@ public class Conclusao {
         return c;
     }
 
+    // Resposta enviada pela própria pessoa numa missão individual.
+    public static Conclusao enviadaIndividual(Missao missao, Congressista pessoa, String resposta, Instant agora) {
+        Conclusao c = new Conclusao();
+        c.missao = missao;
+        c.tripulacao = pessoa.getTripulacao();
+        c.congressista = pessoa;
+        c.status = StatusConclusao.PENDENTE;
+        c.resposta = resposta;
+        c.enviadaPor = pessoa;
+        c.enviadaEm = agora;
+        return c;
+    }
+
+    // Missão individual marcada como cumprida pelo staff, já aprovada.
+    public static Conclusao marcadaParaPessoa(Missao missao, Congressista pessoa, Congressista staff,
+            Instant agora) {
+        Conclusao c = new Conclusao();
+        c.missao = missao;
+        c.tripulacao = pessoa.getTripulacao();
+        c.congressista = pessoa;
+        c.status = StatusConclusao.APROVADA;
+        c.enviadaPor = staff;
+        c.enviadaEm = agora;
+        c.avaliadaPor = staff;
+        c.avaliadaEm = agora;
+        return c;
+    }
+
     public void aprovar(Congressista staff, Instant agora) {
         this.status = StatusConclusao.APROVADA;
         this.avaliadaPor = staff;
@@ -110,6 +145,10 @@ public class Conclusao {
 
     public Tripulacao getTripulacao() {
         return tripulacao;
+    }
+
+    public Congressista getCongressista() {
+        return congressista;
     }
 
     public StatusConclusao getStatus() {

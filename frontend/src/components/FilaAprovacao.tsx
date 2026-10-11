@@ -8,7 +8,9 @@ import { formatarHorario } from "@/lib/datas";
 type Conclusao = {
   id: number;
   missaoTitulo: string;
-  tripulacaoNome: string;
+  alcance: "TRIPULACAO" | "INDIVIDUAL";
+  tripulacaoNome: string | null;
+  congressistaNome: string | null;
   resposta: string | null;
   enviadaPor: string | null;
   enviadaEm: string;
@@ -18,7 +20,8 @@ function buscarFila() {
   return api<Conclusao[]>("/api/staff/conclusoes?status=PENDENTE", { autenticado: true });
 }
 
-// Fila do staff: respostas enviadas pelos capitães, na ordem de chegada.
+// Fila do staff: respostas enviadas pelos capitães e, nas missões individuais,
+// por cada pessoa, na ordem de chegada.
 export function FilaAprovacao() {
   const [fila, setFila] = useState<Conclusao[] | null>(null);
   const [falha, setFalha] = useState(false);
@@ -80,7 +83,10 @@ function ItemFila({ conclusao, aoAvaliar }: { conclusao: Conclusao; aoAvaliar: (
     <article className="flex flex-col gap-2 rounded-lg border p-3">
       <p className="font-semibold">{conclusao.missaoTitulo}</p>
       <p className="text-xs text-muted-foreground">
-        {conclusao.tripulacaoNome} · enviada por {conclusao.enviadaPor ?? "—"} em {formatarHorario(conclusao.enviadaEm)}
+        {conclusao.alcance === "INDIVIDUAL"
+          ? `Individual · ${conclusao.congressistaNome ?? "—"}${conclusao.tripulacaoNome ? ` (${conclusao.tripulacaoNome})` : ""}`
+          : `${conclusao.tripulacaoNome} · enviada por ${conclusao.enviadaPor ?? "—"}`}{" "}
+        · {formatarHorario(conclusao.enviadaEm)}
       </p>
       <p className="text-sm whitespace-pre-line">{conclusao.resposta}</p>
 
@@ -98,7 +104,7 @@ function ItemFila({ conclusao, aoAvaliar }: { conclusao: Conclusao; aoAvaliar: (
           <Input
             value={motivo}
             maxLength={500}
-            placeholder="Motivo (aparece para a tripulação)"
+            placeholder="Motivo (aparece para quem enviou)"
             onChange={(e) => setMotivo(e.target.value)}
             className="h-10"
           />

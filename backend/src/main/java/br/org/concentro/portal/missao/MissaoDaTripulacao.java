@@ -2,8 +2,9 @@ package br.org.concentro.portal.missao;
 
 import java.time.Instant;
 
-// Uma missão como a tripulação vê: dados, situação, o que a tripulação já
-// enviou e se quem está logado pode enviar agora.
+// Uma missão como o congressista vê: dados, situação, o que já foi enviado e se
+// quem está logado pode enviar agora. Nas missões da tripulação, "minhaConclusao"
+// é a da tripulação; nas individuais, a da própria pessoa.
 public record MissaoDaTripulacao(
     Long id,
     String titulo,
@@ -15,11 +16,12 @@ public record MissaoDaTripulacao(
     Instant inicio,
     Instant fim,
     FormaConclusao conclusao,
+    AlcanceMissao alcance,
     SituacaoMissao situacao,
     MinhaConclusao minhaConclusao,
     boolean possoEnviar) {
 
-    // A última tentativa da tripulação nesta missão.
+    // A última tentativa nesta missão.
     public record MinhaConclusao(StatusConclusao status, String resposta, String motivoRecusa) {
     }
 }

@@ -42,6 +42,6 @@ public class StaffConclusaoController {
     @PostMapping("/missoes/{id}/marcar")
     public ConclusaoResposta marcar(@PathVariable Long id, @AuthenticationPrincipal Jwt token,
             @Valid @RequestBody MarcarRequisicao requisicao) {
-        return conclusoes.marcar(id, requisicao.tripulacaoId(), Long.valueOf(token.getSubject()));
+        return conclusoes.marcar(id, requisicao, Long.valueOf(token.getSubject()));
     }
 }

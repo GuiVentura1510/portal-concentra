@@ -1,7 +1,6 @@
 package br.org.concentro.portal.missao;
 
-import jakarta.validation.constraints.NotNull;
-
-// Tripulação que o staff está marcando como tendo cumprido a missão.
-public record MarcarRequisicao(@NotNull Long tripulacaoId) {
+// Quem o staff está marcando como tendo cumprido a missão: a tripulação, nas
+// missões da tripulação, ou a pessoa, nas individuais. O serviço confere qual vale.
+public record MarcarRequisicao(Long tripulacaoId, Long congressistaId) {
 }

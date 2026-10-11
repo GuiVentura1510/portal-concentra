@@ -15,6 +15,8 @@ Todas as funções previstas para o evento estão em produção desde 11/10/2026
 - [x] Missões criadas pelo staff, envio pelas tripulações, fila de aprovação
 - [x] Pontuação por extrato e ranking
 - [x] Painel do staff: tripulações, missões, fila e pessoas
+- [x] Missões individuais e exclusão de missões sem respostas
+- [ ] Visual do site com a identidade do evento
 - [ ] Ícones oficiais do PWA
 
 ## Como funciona
@@ -22,10 +24,10 @@ Todas as funções previstas para o evento estão em produção desde 11/10/2026
 1. **Cadastro.** A pessoa abre o site, informa nome, e-mail (o mesmo da compra do ingresso), senha, EJ, cargo, tempo de MEJ e área, e já entra logada. O login vale por 10 dias no mesmo aparelho.
 2. **Tripulações.** Em 15/10 o staff monta as tripulações uma única vez. São grupos de 5 a 6 pessoas, de EJs diferentes, misturando novatos e veteranos. Quem se cadastra depois da montagem entra na hora numa tripulação com vaga e sem colega da mesma EJ. Os nomes são as 88 constelações.
 3. **Capitão e ponto de encontro.** A tripulação escolhe o capitão no evento e o staff registra no painel. O staff também define o ponto de encontro de cada tripulação.
-4. **Missões.** O staff cria as missões no painel, com pontos, vagas e horário. Há duas formas de conclusão:
-   - **Envio do capitão:** a tripulação envia uma resposta em texto e o staff aprova ou recusa. Enquanto a tripulação não tem capitão, qualquer membro pode enviar; depois, só o capitão.
-   - **Staff marca:** o staff registra a missão cumprida direto, como ao carimbar um passaporte.
-5. **Ranking.** Cada aprovação gera um lançamento de pontos. O ranking soma os lançamentos de cada tripulação.
+4. **Missões.** O staff cria as missões no painel, com pontos, vagas e horário. Cada missão é **da tripulação** (a tripulação cumpre junta, uma vez) ou **individual** (cada pessoa cumpre a sua). Há duas formas de conclusão:
+   - **Resposta pelo portal:** uma resposta em texto é enviada e o staff aprova ou recusa. Nas missões da tripulação, enquanto não há capitão qualquer membro pode enviar; depois, só o capitão. Nas individuais, cada pessoa envia a sua.
+   - **Staff marca:** o staff registra a missão cumprida direto, como ao carimbar um passaporte: no cartão da tripulação ou, nas individuais, na aba Pessoas.
+5. **Ranking.** Cada aprovação gera um lançamento de pontos. O ranking soma os lançamentos de cada tripulação. Os pontos das missões individuais somam na tripulação da pessoa, a menos que `INDIVIDUAIS_NA_TRIPULACAO=false`.
 
 As missões são conteúdo da organização: são criadas e editadas no painel, não no código.
 
@@ -178,8 +180,9 @@ docker compose exec db psql -U portal -d portal -c "delete from lancamento; dele
 | `PUT /api/staff/tripulacoes/{id}/capitao` | Registra o capitão |
 | `PUT /api/staff/tripulacoes/{id}/ponto-encontro` | Define o ponto de encontro |
 | `GET` e `POST /api/staff/missoes` | Lista e cria missões |
-| `PUT /api/staff/missoes/{id}` | Edita uma missão |
-| `POST /api/staff/missoes/{id}/marcar` | Registra a missão cumprida por uma tripulação |
+| `PUT /api/staff/missoes/{id}` | Edita uma missão (o alcance só muda enquanto não há respostas) |
+| `DELETE /api/staff/missoes/{id}` | Exclui uma missão sem respostas nem pontos (409 se houver) |
+| `POST /api/staff/missoes/{id}/marcar` | Registra a missão cumprida: `{"tripulacaoId": ...}` nas da tripulação, `{"congressistaId": ...}` nas individuais |
 | `GET /api/staff/conclusoes?status=PENDENTE` | Fila de respostas |
 | `POST /api/staff/conclusoes/{id}/aprovar` | Aprova e lança os pontos |
 | `POST /api/staff/conclusoes/{id}/recusar` | Recusa, com motivo |
@@ -217,9 +220,9 @@ Um endereço desconhecido volta para `/`. Em produção, o Render reescreve `/*`
 | Aba | O que faz |
 | --- | --- |
 | Tripulações | Resumo, botão de montar (confirmação em dois toques, some depois da montagem), busca, capitão, ponto de encontro e "Registrar missão cumprida" |
-| Missões | Cria e edita missões: título, descrição, pontos, vagas, início e fim no horário de Brasília, forma de conclusão e visibilidade. Não há exclusão: desmarcar "visível" tira a missão do ar |
+| Missões | Cria, edita e exclui missões: título, descrição, pontos, vagas, início e fim no horário de Brasília, para quem (tripulação ou individual), forma de conclusão e visibilidade. Só exclui missão sem respostas; as outras saem do ar desmarcando "visível" |
 | Fila | Respostas enviadas pelas tripulações, com aprovar ou recusar |
-| Pessoas | Busca, senha temporária, remoção de cadastro e cruzamento com a lista de inscritos |
+| Pessoas | Busca, registro de missão individual cumprida, senha temporária, remoção de cadastro e cruzamento com a lista de inscritos |
 
 O site pode ser instalado na tela inicial do celular pelo manifesto em `frontend/public/manifest.webmanifest`. Não há service worker, de propósito: assim o celular nunca serve uma versão antiga quando houver correção durante o evento. Os ícones atuais são provisórios; para trocar, substitua os três PNG em `frontend/public/`.
 
@@ -238,6 +241,7 @@ As propriedades podem ser sobrescritas por variáveis de ambiente. Em produção
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Endereços de sites autorizados a chamar a API, separados por vírgula e sem barra no final |
 | `JWT_SECRET` | segredo de desenvolvimento | Chave que assina os tokens. Em produção é obrigatória: a API não sobe no Render com o segredo de desenvolvimento |
 | `STAFF_EMAILS` | vazio | E-mails do staff, separados por vírgula |
+| `INDIVIDUAIS_NA_TRIPULACAO` | `true` | Se os pontos das missões individuais somam no ranking da tripulação da pessoa |
 
 Sobre o staff:
 
@@ -271,15 +275,17 @@ O banco é configurado para validação do schema (`ddl-auto: validate`), então
 | `V4__tripulacoes.sql` | Tabela `tripulacao` e `congressista.tripulacao_id` |
 | `V5__missoes.sql` | Tabela `missao` |
 | `V6__conclusoes_e_pontos.sql` | `missao.vagas_usadas`, tabelas `conclusao` e `lancamento` |
+| `V7__missoes_individuais.sql` | `missao.alcance` e a pessoa em `conclusao` e `lancamento` |
 
-Nos logs da API, a linha `Current version of schema "public": 6` confirma que todas foram aplicadas.
+Nos logs da API, a linha `Current version of schema "public": 7` confirma que todas foram aplicadas.
 
 As classes anotadas com `@Entity` precisam bater com as tabelas: se houver diferença, o backend não inicia.
 
 ## Regras do projeto
 
 - **Vagas.** Vagas limitadas por missão são reservadas com um único `update` condicional no banco, nunca com leitura seguida de escrita. Se nenhuma linha muda, a missão está esgotada.
-- **Uma conclusão por tripulação e missão.** Um índice único parcial (`ux_conclusao_ativa`) impede duas conclusões pendentes ou aprovadas da mesma tripulação na mesma missão. Depois de uma recusa, a tripulação pode enviar de novo.
+- **Uma conclusão por tripulação (ou pessoa) e missão.** Índices únicos parciais impedem duas conclusões pendentes ou aprovadas da mesma tripulação na mesma missão (`ux_conclusao_ativa`) e da mesma pessoa na mesma missão individual (`ux_conclusao_individual_ativa`). Depois de uma recusa, dá para enviar de novo.
+- **Exclusão.** Uma missão só é excluída se ninguém respondeu nem pontuou; assim, nenhum ponto some do ranking.
 - **Extrato de pontos.** A pontuação é um extrato de lançamentos, com no máximo um lançamento por conclusão. O total é sempre a soma do extrato, nunca um campo editável. Os pontos são copiados da missão no momento da aprovação: mudar os pontos da missão depois não altera o que já foi lançado.
 - **Horários.** As janelas das missões são validadas no servidor. Os instantes são guardados em UTC e exibidos e digitados no horário de Brasília (UTC-3).
 - **Ranking.** Fica em cache em memória por 15 segundos (`app.ranking.cache`). Empates dividem a posição.
@@ -290,10 +296,10 @@ As classes anotadas com `@Entity` precisam bater com as tabelas: se houver difer
 
 - **Até 14/10:** cruzar os cadastros com a lista de inscritos na aba Pessoas e remover contas de teste e cadastros indevidos. O cruzamento só aponta: confira antes de remover, porque a pessoa pode ter usado outro e-mail.
 - **15/10:** montar as tripulações em produção. A montagem roda **uma única vez**; não aperte o botão antes da hora.
-- **Missões:** a organização cria as missões no painel. Não crie missões de teste em produção, porque elas não podem ser apagadas, só escondidas.
+- **Missões:** a organização cria as missões no painel. Uma missão sem respostas pode ser excluída; com respostas, só escondida.
 - **Senha esquecida:** na aba Pessoas, "Nova senha" gera uma senha temporária para passar à pessoa.
 - **Remoção de cadastro:** só é possível para quem não enviou nem avaliou missão, não lançou pontos e não é capitão.
-- **Capitão:** depois de registrado, só ele envia as respostas da tripulação.
+- **Capitão:** depois de registrado, só ele envia as respostas das missões da tripulação. As individuais, cada um envia a sua.
 
 ## Testes
 
@@ -304,7 +310,7 @@ cd backend
 ./mvnw test
 ```
 
-São 47 testes, que sobem a aplicação inteira contra o banco local e, por isso, também aplicam as migrações pendentes. Os testes que gravam no banco usam `@Transactional` e são desfeitos no fim. Os relatórios ficam em `backend/target/surefire-reports/`.
+São 56 testes, que sobem a aplicação inteira contra o banco local e, por isso, também aplicam as migrações pendentes. Os testes que gravam no banco usam `@Transactional` e são desfeitos no fim. Os relatórios ficam em `backend/target/surefire-reports/`.
 
 O frontend não tem testes automatizados. A verificação dele é o lint e o build:
 

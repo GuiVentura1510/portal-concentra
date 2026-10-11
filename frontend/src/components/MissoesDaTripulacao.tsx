@@ -16,6 +16,7 @@ type Missao = {
   inicio: string | null;
   fim: string | null;
   conclusao: "ENVIO_CAPITAO" | "STAFF_MARCA";
+  alcance: "TRIPULACAO" | "INDIVIDUAL";
   situacao: Situacao;
   minhaConclusao: { status: StatusConclusao; resposta: string | null; motivoRecusa: string | null } | null;
   possoEnviar: boolean;
@@ -28,7 +29,8 @@ const SITUACOES: Record<Situacao, string> = {
   ESGOTADA: "Vagas esgotadas",
 };
 
-// Missões visíveis para a tripulação de quem está logado, com o envio da resposta.
+// Missões visíveis para quem está logado, com o envio da resposta. As da tripulação
+// são enviadas pelo capitão; as individuais, por cada pessoa.
 export function MissoesDaTripulacao({ temTripulacao }: { temTripulacao: boolean }) {
   const [missoes, setMissoes] = useState<Missao[] | null>(null);
   const [falha, setFalha] = useState(false);
@@ -50,7 +52,9 @@ export function MissoesDaTripulacao({ temTripulacao }: { temTripulacao: boolean 
     <section className="flex flex-col gap-3">
       <p className="text-lg font-semibold">Missões</p>
       {!temTripulacao && (
-        <p className="text-sm text-muted-foreground">O envio das respostas abre quando sua tripulação for revelada.</p>
+        <p className="text-sm text-muted-foreground">
+          As missões da tripulação abrem quando sua tripulação for revelada.
+        </p>
       )}
       {missoes.map((missao) => (
         <CartaoMissao key={missao.id} missao={missao} temTripulacao={temTripulacao} aoEnviar={carregar} />
@@ -74,6 +78,7 @@ function CartaoMissao({
   const minha = missao.minhaConclusao;
   const ativa = minha !== null && minha.status !== "RECUSADA";
   const aberta = missao.situacao === "ABERTA";
+  const individual = missao.alcance === "INDIVIDUAL";
 
   async function enviar() {
     setEnviando(true);
@@ -96,7 +101,7 @@ function CartaoMissao({
         <span className="shrink-0 text-sm font-medium">{missao.pontos} pts</span>
       </div>
       <p className="text-xs text-muted-foreground">
-        {SITUACOES[missao.situacao]} · {textoJanela(missao.inicio, missao.fim)}
+        {individual ? "Individual" : "Da tripulação"} · {SITUACOES[missao.situacao]} · {textoJanela(missao.inicio, missao.fim)}
         {missao.vagasRestantes !== null && ` · ${missao.vagasRestantes} de ${missao.vagas} vagas restantes`}
       </p>
       {missao.descricao && <p className="text-sm whitespace-pre-line">{missao.descricao}</p>}
@@ -105,14 +110,15 @@ function CartaoMissao({
       {minha?.status === "PENDENTE" && <p className="text-sm">Resposta enviada. Aguardando o staff.</p>}
       {minha?.status === "RECUSADA" && (
         <p className="text-sm text-destructive">
-          A resposta foi recusada{minha.motivoRecusa ? `: ${minha.motivoRecusa}` : "."} Vocês podem enviar de novo.
+          A resposta foi recusada{minha.motivoRecusa ? `: ${minha.motivoRecusa}` : "."}{" "}
+          {individual ? "Você pode enviar de novo." : "Vocês podem enviar de novo."}
         </p>
       )}
 
       {missao.possoEnviar && (
         <div className="flex flex-col gap-2">
           <label htmlFor={`resposta-${missao.id}`} className="text-sm font-medium">
-            Resposta da tripulação
+            {individual ? "Sua resposta" : "Resposta da tripulação"}
           </label>
           <textarea
             id={`resposta-${missao.id}`}
@@ -128,7 +134,7 @@ function CartaoMissao({
         </div>
       )}
 
-      {aberta && !ativa && !missao.possoEnviar && temTripulacao && missao.conclusao === "ENVIO_CAPITAO" && (
+      {aberta && !ativa && !missao.possoEnviar && !individual && temTripulacao && missao.conclusao === "ENVIO_CAPITAO" && (
         <p className="text-sm text-muted-foreground">O capitão da tripulação envia a resposta desta missão.</p>
       )}
       {aberta && !ativa && missao.conclusao === "STAFF_MARCA" && (
@@ -147,8 +153,8 @@ function CartaoMissao({
 
 function mensagemDeErro(e: unknown): string {
   if (e instanceof ErroApi) {
-    if (e.status === 403) return "Só o capitão envia as respostas da tripulação.";
-    if (e.status === 409) return "Não deu para enviar: a missão fechou, as vagas acabaram ou sua tripulação já enviou.";
+    if (e.status === 403) return "Você não pode enviar esta resposta (nas missões da tripulação, só o capitão envia).";
+    if (e.status === 409) return "Não deu para enviar: a missão fechou, as vagas acabaram ou a resposta já foi enviada.";
     if (e.status === 0) return "Sem conexão com o servidor. Confira a internet e tente de novo.";
   }
   return "Não foi possível enviar. Tente de novo.";

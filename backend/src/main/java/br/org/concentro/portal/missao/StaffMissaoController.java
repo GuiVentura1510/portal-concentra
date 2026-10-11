@@ -3,6 +3,7 @@ package br.org.concentro.portal.missao;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,7 +14,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 // Missões no painel do staff. Tudo em /api/staff exige o papel STAFF.
-// Não há exclusão: para tirar uma missão do ar, o staff desmarca "visível".
+// A exclusão só vale para missões sem respostas nem pontos; as outras saem do ar
+// desmarcando "visível".
 @RestController
 @RequestMapping("/api/staff/missoes")
 public class StaffMissaoController {
@@ -38,5 +40,11 @@ public class StaffMissaoController {
     @PutMapping("/{id}")
     public MissaoResposta atualizar(@PathVariable Long id, @Valid @RequestBody MissaoRequisicao requisicao) {
         return missoes.atualizar(id, requisicao);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void excluir(@PathVariable Long id) {
+        missoes.excluir(id);
     }
 }

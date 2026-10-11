@@ -26,7 +26,14 @@ type Montagem = {
   colegasDeMesmaEj: number;
 };
 type Estado = "carregando" | "pronto" | "sem-acesso" | "sem-login" | "falha";
-type Painel = { resumo: Resumo; tripulacoes: Tripulacao[]; marcaveis: MissaoMarcavel[] };
+// Missões que o staff registra direto, separadas pelo alcance: as da tripulação
+// aparecem nos cartões das tripulações; as individuais, na aba Pessoas.
+type Painel = {
+  resumo: Resumo;
+  tripulacoes: Tripulacao[];
+  marcaveis: MissaoMarcavel[];
+  individuais: MissaoMarcavel[];
+};
 type Aba = "tripulacoes" | "missoes" | "fila" | "pessoas";
 
 // Busca o resumo, a lista de tripulações (se já houver) e as missões que o staff registra direto.
@@ -35,10 +42,14 @@ async function buscarPainel(): Promise<Painel> {
   const tripulacoes =
     resumo.tripulacoes > 0 ? await api<Tripulacao[]>("/api/staff/tripulacoes", { autenticado: true }) : [];
   const missoes = await api<MissaoStaff[]>("/api/staff/missoes", { autenticado: true });
-  const marcaveis = missoes
-    .filter((m) => m.conclusao === "STAFF_MARCA")
-    .map((m) => ({ id: m.id, titulo: m.titulo, pontos: m.pontos }));
-  return { resumo, tripulacoes, marcaveis };
+  const doStaff = missoes.filter((m) => m.conclusao === "STAFF_MARCA");
+  const resumir = (m: MissaoStaff) => ({ id: m.id, titulo: m.titulo, pontos: m.pontos });
+  return {
+    resumo,
+    tripulacoes,
+    marcaveis: doStaff.filter((m) => m.alcance === "TRIPULACAO").map(resumir),
+    individuais: doStaff.filter((m) => m.alcance === "INDIVIDUAL").map(resumir),
+  };
 }
 
 function estadoDoErro(e: unknown): Estado {
@@ -54,6 +65,7 @@ export default function Staff() {
   const [resumo, setResumo] = useState<Resumo | null>(null);
   const [tripulacoes, setTripulacoes] = useState<Tripulacao[]>([]);
   const [marcaveis, setMarcaveis] = useState<MissaoMarcavel[]>([]);
+  const [individuais, setIndividuais] = useState<MissaoMarcavel[]>([]);
   const [busca, setBusca] = useState("");
   const [aba, setAba] = useState<Aba>("tripulacoes");
 
@@ -61,6 +73,7 @@ export default function Staff() {
     setResumo(painel.resumo);
     setTripulacoes(painel.tripulacoes);
     setMarcaveis(painel.marcaveis);
+    setIndividuais(painel.individuais);
     setEstado("pronto");
   }, []);
 
@@ -68,7 +81,8 @@ export default function Staff() {
     buscarPainel().then(aplicar, (e) => setEstado(estadoDoErro(e)));
   }, [aplicar]);
 
-  // Usado depois da montagem, para mostrar as tripulações recém-criadas.
+  // Usado depois da montagem, para mostrar as tripulações recém-criadas, e depois
+  // de mudanças nas missões, para atualizar as listas de "Registrar missão cumprida".
   const recarregar = () => buscarPainel().then(aplicar, (e) => setEstado(estadoDoErro(e)));
 
   function atualizar(atualizada: Tripulacao) {
@@ -145,9 +159,9 @@ export default function Staff() {
             </div>
           )}
 
-          {estado === "pronto" && aba === "missoes" && <PainelMissoes />}
+          {estado === "pronto" && aba === "missoes" && <PainelMissoes aoMudar={() => void recarregar()} />}
           {estado === "pronto" && aba === "fila" && <FilaAprovacao />}
-          {estado === "pronto" && aba === "pessoas" && <PainelPessoas />}
+          {estado === "pronto" && aba === "pessoas" && <PainelPessoas missoesIndividuais={individuais} />}
 
           {estado === "pronto" && aba === "tripulacoes" && resumo && (
             <>
