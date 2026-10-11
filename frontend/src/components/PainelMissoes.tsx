@@ -5,10 +5,10 @@ import { Selecao } from "@/components/Selecao";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api, ErroApi } from "@/lib/api";
-import { apiParaCampo, campoParaApi, formatarHorario } from "@/lib/datas";
+import { apiParaCampo, campoParaApi, textoJanela } from "@/lib/datas";
 
 type FormaConclusao = "ENVIO_CAPITAO" | "STAFF_MARCA";
-type Missao = {
+export type MissaoStaff = {
   id: number;
   titulo: string;
   descricao: string;
@@ -18,7 +18,9 @@ type Missao = {
   fim: string | null;
   conclusao: FormaConclusao;
   visivel: boolean;
+  vagasUsadas: number;
 };
+type Missao = MissaoStaff;
 
 const FORMAS: { valor: FormaConclusao; rotulo: string }[] = [
   { valor: "ENVIO_CAPITAO", rotulo: "O capitão envia uma resposta e o staff aprova" },
@@ -76,9 +78,10 @@ export function PainelMissoes() {
             </span>
           </div>
           <p className="text-sm">
-            {missao.pontos} pontos · {missao.vagas ? `${missao.vagas} vagas` : "sem limite de vagas"}
+            {missao.pontos} pontos ·{" "}
+            {missao.vagas ? `${missao.vagasUsadas} de ${missao.vagas} vagas ocupadas` : "sem limite de vagas"}
           </p>
-          <p className="text-sm text-muted-foreground">{textoJanela(missao)}</p>
+          <p className="text-sm text-muted-foreground">{textoJanela(missao.inicio, missao.fim)}</p>
           <p className="text-sm text-muted-foreground">
             {FORMAS.find((f) => f.valor === missao.conclusao)?.rotulo}
           </p>
@@ -89,13 +92,6 @@ export function PainelMissoes() {
       ))}
     </div>
   );
-}
-
-function textoJanela(missao: Missao): string {
-  if (missao.inicio && missao.fim) return `De ${formatarHorario(missao.inicio)} até ${formatarHorario(missao.fim)}`;
-  if (missao.inicio) return `A partir de ${formatarHorario(missao.inicio)}`;
-  if (missao.fim) return `Até ${formatarHorario(missao.fim)}`;
-  return "Sem horário definido";
 }
 
 // Formulário de criação e edição. Os horários são digitados no horário de Brasília.

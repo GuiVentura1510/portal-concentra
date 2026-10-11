@@ -34,3 +34,11 @@ export function formatarHorario(iso: string): string {
     minute: "2-digit",
   }).format(new Date(iso));
 }
+
+// Janela de uma missão em texto. Ex.: "De sáb., 17/10, 10:30 até sáb., 17/10, 11:20".
+export function textoJanela(inicio: string | null, fim: string | null): string {
+  if (inicio && fim) return `De ${formatarHorario(inicio)} até ${formatarHorario(fim)}`;
+  if (inicio) return `A partir de ${formatarHorario(inicio)}`;
+  if (fim) return `Até ${formatarHorario(fim)}`;
+  return "Sem horário definido";
+}

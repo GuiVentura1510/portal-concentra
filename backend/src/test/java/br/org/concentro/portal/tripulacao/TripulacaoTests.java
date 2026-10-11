@@ -16,6 +16,8 @@ import br.org.concentro.portal.cadastro.CongressistaRepository;
 import br.org.concentro.portal.cadastro.Ej;
 import br.org.concentro.portal.cadastro.EjRepository;
 import br.org.concentro.portal.cadastro.TempoMej;
+import br.org.concentro.portal.missao.ConclusaoRepository;
+import br.org.concentro.portal.missao.LancamentoRepository;
 import jakarta.persistence.EntityManager;
 import com.jayway.jsonpath.JsonPath;
 import java.util.List;
@@ -56,11 +58,19 @@ class TripulacaoTests {
     @Autowired
     private EntityManager em;
 
+    @Autowired
+    private LancamentoRepository lancamentos;
+
+    @Autowired
+    private ConclusaoRepository conclusoes;
+
     // Começa sempre sem tripulações, mesmo que o banco local já tenha uma montagem
     // de teste manual. Tudo é desfeito no fim do teste.
     // Depois cria 12 congressistas em 4 EJs, mais uma conta do staff.
     @BeforeEach
     void criaContas() {
+        lancamentos.deleteAll();
+        conclusoes.deleteAll();
         for (Congressista c : congressistas.comTripulacao()) {
             c.entrarNa(null);
         }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
 import { MinhaTripulacao } from "@/components/MinhaTripulacao";
+import { MissoesDaTripulacao } from "@/components/MissoesDaTripulacao";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -33,6 +34,7 @@ type Estado = "carregando" | "visitante" | "logado" | "falha";
 export default function Inicio() {
   const [estado, setEstado] = useState<Estado>(() => (lerToken() ? "carregando" : "visitante"));
   const [perfil, setPerfil] = useState<Perfil | null>(null);
+  const [temTripulacao, setTemTripulacao] = useState(false);
 
   useEffect(() => {
     if (!lerToken()) return;
@@ -100,7 +102,13 @@ export default function Inicio() {
                   </Button>
                 </>
               ) : (
-                <MinhaTripulacao meuId={perfil.id} />
+                <>
+                  <MinhaTripulacao meuId={perfil.id} aoCarregar={setTemTripulacao} />
+                  <Button asChild variant="outline" className="h-10 w-full">
+                    <Link to="/ranking">Ver ranking</Link>
+                  </Button>
+                  <MissoesDaTripulacao temTripulacao={temTripulacao} />
+                </>
               )}
               <Button variant="outline" className="h-10 w-full" onClick={sairDaConta}>
                 Sair

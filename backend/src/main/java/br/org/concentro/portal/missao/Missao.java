@@ -43,6 +43,10 @@ public class Missao {
     @Column(nullable = false)
     private boolean visivel;
 
+    // Vagas já ocupadas. Só muda pelo MissaoRepository.ocuparVaga (V6).
+    @Column(name = "vagas_usadas", nullable = false)
+    private int vagasUsadas;
+
     // Construtor vazio exigido pelo JPA.
     protected Missao() {
     }
@@ -98,5 +102,13 @@ public class Missao {
 
     public boolean isVisivel() {
         return visivel;
+    }
+
+    public int getVagasUsadas() {
+        return vagasUsadas;
+    }
+
+    public boolean esgotada() {
+        return vagas != null && vagasUsadas >= vagas;
     }
 }

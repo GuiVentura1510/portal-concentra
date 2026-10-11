@@ -12,10 +12,11 @@ public record MissaoResposta(
     Instant inicio,
     Instant fim,
     FormaConclusao conclusao,
-    boolean visivel) {
+    boolean visivel,
+    int vagasUsadas) {
 
     static MissaoResposta de(Missao m) {
         return new MissaoResposta(m.getId(), m.getTitulo(), m.getDescricao(), m.getPontos(), m.getVagas(),
-            m.getInicio(), m.getFim(), m.getConclusao(), m.isVisivel());
+            m.getInicio(), m.getFim(), m.getConclusao(), m.isVisivel(), m.getVagasUsadas());
     }
 }

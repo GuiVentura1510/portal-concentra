@@ -19,16 +19,27 @@ type Estado =
 
 // Tripulação de quem está logado. Até a montagem, em 15/10, a API responde 404
 // e a tela mostra só o aviso.
-export function MinhaTripulacao({ meuId }: { meuId: number }) {
+export function MinhaTripulacao({
+  meuId,
+  aoCarregar,
+}: {
+  meuId: number;
+  // Avisa a tela de cima se a pessoa já tem tripulação.
+  aoCarregar?: (temTripulacao: boolean) => void;
+}) {
   const [estado, setEstado] = useState<Estado>({ tipo: "carregando" });
 
   useEffect(() => {
     api<Tripulacao>("/api/tripulacao", { autenticado: true })
-      .then((tripulacao) => setEstado({ tipo: "pronta", tripulacao }))
-      .catch((e) =>
-        setEstado(e instanceof ErroApi && e.status === 404 ? { tipo: "aguardando" } : { tipo: "falha" }),
-      );
-  }, []);
+      .then((tripulacao) => {
+        setEstado({ tipo: "pronta", tripulacao });
+        aoCarregar?.(true);
+      })
+      .catch((e) => {
+        setEstado(e instanceof ErroApi && e.status === 404 ? { tipo: "aguardando" } : { tipo: "falha" });
+        aoCarregar?.(false);
+      });
+  }, [aoCarregar]);
 
   if (estado.tipo === "carregando") {
     return <p className="text-sm text-muted-foreground">Carregando sua tripulação...</p>;

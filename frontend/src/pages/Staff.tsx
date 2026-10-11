@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 
-import { CartaoTripulacaoStaff, type Tripulacao } from "@/components/CartaoTripulacaoStaff";
-import { PainelMissoes } from "@/components/PainelMissoes";
+import { CartaoTripulacaoStaff, type MissaoMarcavel, type Tripulacao } from "@/components/CartaoTripulacaoStaff";
+import { FilaAprovacao } from "@/components/FilaAprovacao";
+import { PainelMissoes, type MissaoStaff } from "@/components/PainelMissoes";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,15 +25,19 @@ type Montagem = {
   colegasDeMesmaEj: number;
 };
 type Estado = "carregando" | "pronto" | "sem-acesso" | "sem-login" | "falha";
-type Painel = { resumo: Resumo; tripulacoes: Tripulacao[] };
-type Aba = "tripulacoes" | "missoes";
+type Painel = { resumo: Resumo; tripulacoes: Tripulacao[]; marcaveis: MissaoMarcavel[] };
+type Aba = "tripulacoes" | "missoes" | "fila";
 
-// Busca o resumo e, se já houver tripulações, a lista completa.
+// Busca o resumo, a lista de tripulações (se já houver) e as missões que o staff registra direto.
 async function buscarPainel(): Promise<Painel> {
   const resumo = await api<Resumo>("/api/staff/tripulacoes/resumo", { autenticado: true });
   const tripulacoes =
     resumo.tripulacoes > 0 ? await api<Tripulacao[]>("/api/staff/tripulacoes", { autenticado: true }) : [];
-  return { resumo, tripulacoes };
+  const missoes = await api<MissaoStaff[]>("/api/staff/missoes", { autenticado: true });
+  const marcaveis = missoes
+    .filter((m) => m.conclusao === "STAFF_MARCA")
+    .map((m) => ({ id: m.id, titulo: m.titulo, pontos: m.pontos }));
+  return { resumo, tripulacoes, marcaveis };
 }
 
 function estadoDoErro(e: unknown): Estado {
@@ -47,12 +52,14 @@ export default function Staff() {
   const [estado, setEstado] = useState<Estado>("carregando");
   const [resumo, setResumo] = useState<Resumo | null>(null);
   const [tripulacoes, setTripulacoes] = useState<Tripulacao[]>([]);
+  const [marcaveis, setMarcaveis] = useState<MissaoMarcavel[]>([]);
   const [busca, setBusca] = useState("");
   const [aba, setAba] = useState<Aba>("tripulacoes");
 
   const aplicar = useCallback((painel: Painel) => {
     setResumo(painel.resumo);
     setTripulacoes(painel.tripulacoes);
+    setMarcaveis(painel.marcaveis);
     setEstado("pronto");
   }, []);
 
@@ -109,7 +116,7 @@ export default function Staff() {
           )}
 
           {estado === "pronto" && (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <Button
                 variant={aba === "tripulacoes" ? "default" : "outline"}
                 className="h-10"
@@ -124,10 +131,14 @@ export default function Staff() {
               >
                 Missões
               </Button>
+              <Button variant={aba === "fila" ? "default" : "outline"} className="h-10" onClick={() => setAba("fila")}>
+                Fila
+              </Button>
             </div>
           )}
 
           {estado === "pronto" && aba === "missoes" && <PainelMissoes />}
+          {estado === "pronto" && aba === "fila" && <FilaAprovacao />}
 
           {estado === "pronto" && aba === "tripulacoes" && resumo && (
             <>
@@ -150,7 +161,7 @@ export default function Staff() {
                   />
                   {visiveis.length === 0 && <p className="text-sm">Nada encontrado.</p>}
                   {visiveis.map((t) => (
-                    <CartaoTripulacaoStaff key={t.id} tripulacao={t} aoAtualizar={atualizar} />
+                    <CartaoTripulacaoStaff key={t.id} tripulacao={t} missoesMarcaveis={marcaveis} aoAtualizar={atualizar} />
                   ))}
                 </>
               )}

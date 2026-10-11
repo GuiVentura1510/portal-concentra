@@ -32,3 +32,6 @@ app:
     # E-mails das contas do staff, separados por vírgula. Em produção vem da
     # variável STAFF_EMAILS no Render. Essas contas não entram em tripulações.
     emails: ${STAFF_EMAILS:}
+  ranking:
+    # Por quanto tempo o ranking calculado é reaproveitado (regra do README: 10 a 15 s).
+    cache: PT15S
