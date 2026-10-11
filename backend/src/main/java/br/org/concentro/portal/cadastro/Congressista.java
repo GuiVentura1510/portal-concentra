@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import br.org.concentro.portal.tripulacao.Tripulacao;
 
 // Pessoa cadastrada no portal. Espelha a tabela "congressista" (V2 e V3).
 // Cargo, tempo de MEJ e área de atuação são respondidos no próprio cadastro.
@@ -49,6 +50,11 @@ public class Congressista {
     @Enumerated(EnumType.STRING)
     @Column(name = "area_atuacao", length = 50)
     private AreaAtuacao areaAtuacao;
+
+    // Vazia até a montagem das tripulações (V4).
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tripulacao_id")
+    private Tripulacao tripulacao;
 
     // Construtor vazio exigido pelo JPA.
     protected Congressista() {
@@ -95,5 +101,13 @@ public class Congressista {
 
     public AreaAtuacao getAreaAtuacao() {
         return areaAtuacao;
+    }
+
+    public Tripulacao getTripulacao() {
+        return tripulacao;
+    }
+
+    public void entrarNa(Tripulacao tripulacao) {
+        this.tripulacao = tripulacao;
     }
 }

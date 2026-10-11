@@ -10,6 +10,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -31,11 +33,23 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/cadastro", "/api/login").permitAll()
                 // Página de erro interna do Spring: sem isto, todo erro vira 403.
                 .requestMatchers("/error").permitAll()
+                // Rotas do staff: exigem o papel STAFF no token.
+                .requestMatchers("/api/staff/**").hasAuthority("STAFF")
                 // Todo o resto exige o token do login.
                 .anyRequest().authenticated())
             // Lê o cabeçalho "Authorization: Bearer <token>" e confere a assinatura.
-            .oauth2ResourceServer(o -> o.jwt(Customizer.withDefaults()));
+            .oauth2ResourceServer(o -> o.jwt(j -> j.jwtAuthenticationConverter(conversorDePapeis())));
         return http.build();
+    }
+
+    // Transforma a lista "papeis" do token em permissões do Spring (ex.: "STAFF").
+    private static JwtAuthenticationConverter conversorDePapeis() {
+        JwtGrantedAuthoritiesConverter papeis = new JwtGrantedAuthoritiesConverter();
+        papeis.setAuthoritiesClaimName("papeis");
+        papeis.setAuthorityPrefix("");
+        JwtAuthenticationConverter conversor = new JwtAuthenticationConverter();
+        conversor.setJwtGrantedAuthoritiesConverter(papeis);
+        return conversor;
     }
 
     // Gera e confere o hash das senhas (BCrypt).

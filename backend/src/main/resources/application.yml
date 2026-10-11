@@ -28,3 +28,7 @@ app:
     # Em produção o Render define JWT_SECRET. O valor padrão serve só na sua máquina.
     secret: ${JWT_SECRET:dev-somente-local-troque-em-producao-0123456789abcdef}
     validade: P10D
+  staff:
+    # E-mails das contas do staff, separados por vírgula. Em produção vem da
+    # variável STAFF_EMAILS no Render. Essas contas não entram em tripulações.
+    emails: ${STAFF_EMAILS:}

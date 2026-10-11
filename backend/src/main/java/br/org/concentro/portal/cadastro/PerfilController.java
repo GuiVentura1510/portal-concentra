@@ -1,5 +1,6 @@
 package br.org.concentro.portal.cadastro;
 
+import br.org.concentro.portal.acesso.EquipeStaff;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -13,9 +14,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class PerfilController {
 
     private final CongressistaRepository congressistas;
+    private final EquipeStaff staff;
 
-    public PerfilController(CongressistaRepository congressistas) {
+    public PerfilController(CongressistaRepository congressistas, EquipeStaff staff) {
         this.congressistas = congressistas;
+        this.staff = staff;
     }
 
     @GetMapping("/api/perfil")
@@ -24,6 +27,7 @@ public class PerfilController {
         Congressista c = congressistas.buscarComEj(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Conta não encontrada."));
         return new PerfilResposta(c.getId(), c.getNome(), c.getEmail(), c.getEj().getId(),
-            c.getEj().getNome(), c.getCargo(), c.getTempoMej(), c.getAreaAtuacao());
+            c.getEj().getNome(), c.getCargo(), c.getTempoMej(), c.getAreaAtuacao(),
+            staff.ehStaff(c.getEmail()));
     }
 }

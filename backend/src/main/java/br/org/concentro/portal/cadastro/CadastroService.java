@@ -1,6 +1,7 @@
 package br.org.concentro.portal.cadastro;
 
 import java.nio.charset.StandardCharsets;
+import br.org.concentro.portal.tripulacao.TripulacaoService;
 import java.util.Locale;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -21,12 +22,14 @@ public class CadastroService {
     private final CongressistaRepository congressistas;
     private final EjRepository ejs;
     private final PasswordEncoder passwordEncoder;
+    private final TripulacaoService tripulacoes;
 
     public CadastroService(CongressistaRepository congressistas, EjRepository ejs,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder, TripulacaoService tripulacoes) {
         this.congressistas = congressistas;
         this.ejs = ejs;
         this.passwordEncoder = passwordEncoder;
+        this.tripulacoes = tripulacoes;
     }
 
     @Transactional
@@ -51,6 +54,8 @@ public class CadastroService {
             // Dois cadastros simultâneos com o mesmo e-mail: o banco barra o segundo.
             throw new ResponseStatusException(HttpStatus.CONFLICT, "E-mail já cadastrado.");
         }
+        // Depois de 15/10, quem se cadastra já entra numa tripulação.
+        tripulacoes.encaixarSeJaMontadas(novo);
         return new CadastroResposta(novo.getId(), novo.getNome(), novo.getEmail(), ej.getId());
     }
 }

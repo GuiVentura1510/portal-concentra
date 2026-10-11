@@ -3,6 +3,7 @@ package br.org.concentro.portal.acesso;
 import br.org.concentro.portal.cadastro.Congressista;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
@@ -17,10 +18,13 @@ public class TokenService {
 
     private final JwtEncoder encoder;
     private final Duration validade;
+    private final EquipeStaff staff;
 
-    public TokenService(JwtEncoder encoder, @Value("${app.jwt.validade}") Duration validade) {
+    public TokenService(JwtEncoder encoder, @Value("${app.jwt.validade}") Duration validade,
+            EquipeStaff staff) {
         this.encoder = encoder;
         this.validade = validade;
+        this.staff = staff;
     }
 
     public String emitir(Congressista congressista) {
@@ -31,6 +35,8 @@ public class TokenService {
             .issuedAt(agora)
             .expiresAt(agora.plus(validade))
             .claim("nome", congressista.getNome())
+            // Papéis lidos pelo SecurityConfig. Só o staff tem "STAFF".
+            .claim("papeis", staff.ehStaff(congressista.getEmail()) ? List.of("STAFF") : List.of())
             .build();
         // O cabeçalho precisa dizer HS256, senão o encoder procura uma chave RSA.
         JwsHeader cabecalho = JwsHeader.with(MacAlgorithm.HS256).build();

@@ -9,5 +9,6 @@ public record PerfilResposta(
     String ejNome,
     Cargo cargo,
     TempoMej tempoMej,
-    AreaAtuacao areaAtuacao) {
+    AreaAtuacao areaAtuacao,
+    boolean staff) {
 }
