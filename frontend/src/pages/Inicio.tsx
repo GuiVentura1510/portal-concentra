@@ -93,7 +93,12 @@ export default function Inicio() {
                 <dd className="break-all">{perfil.email}</dd>
               </dl>
               {perfil.staff ? (
-                <p className="text-sm">Você está no staff, por isso não entra em tripulação.</p>
+                <>
+                  <p className="text-sm">Você está no staff, por isso não entra em tripulação.</p>
+                  <Button asChild className="h-10 w-full">
+                    <Link to="/staff">Abrir painel do staff</Link>
+                  </Button>
+                </>
               ) : (
                 <MinhaTripulacao meuId={perfil.id} />
               )}

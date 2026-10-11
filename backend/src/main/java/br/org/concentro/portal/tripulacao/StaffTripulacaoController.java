@@ -21,6 +21,11 @@ public class StaffTripulacaoController {
         this.tripulacoes = tripulacoes;
     }
 
+    @GetMapping("/resumo")
+    public ResumoResposta resumo() {
+        return tripulacoes.resumo();
+    }
+
     @GetMapping
     public List<TripulacaoResposta> todas() {
         return tripulacoes.todas();

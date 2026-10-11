@@ -25,6 +25,11 @@ export const AREAS_ATUACAO: Opcao[] = [
   { valor: "OPERACOES", rotulo: "Operações (Gestão de Pessoas e Financeiro)" },
 ];
 
+// "1 pessoa", "2 pessoas": escolhe a forma certa da palavra pelo número.
+export function contar(quantidade: number, singular: string, plural: string): string {
+  return `${quantidade} ${quantidade === 1 ? singular : plural}`;
+}
+
 // Texto de um código, para mostrar no perfil.
 export function rotuloDe(opcoes: Opcao[], valor: string): string {
   return opcoes.find((opcao) => opcao.valor === valor)?.rotulo ?? valor;

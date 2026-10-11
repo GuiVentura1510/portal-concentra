@@ -1,0 +1,134 @@
+import { useState } from "react";
+
+import { Selecao } from "@/components/Selecao";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { api } from "@/lib/api";
+import { CARGOS, contar, rotuloDe } from "@/lib/opcoes";
+
+export type Membro = { id: number; nome: string; ejNome: string; cargo: string };
+export type Tripulacao = {
+  id: number;
+  nome: string;
+  pontoEncontro: string | null;
+  capitaoId: number | null;
+  membros: Membro[];
+};
+
+type Aviso = { tipo: "ok" | "erro"; texto: string } | null;
+
+// Uma tripulação no painel do staff: membros, capitão e ponto de encontro.
+// Cada campo é salvo separado, para um erro num não apagar o outro.
+export function CartaoTripulacaoStaff({
+  tripulacao,
+  aoAtualizar,
+}: {
+  tripulacao: Tripulacao;
+  aoAtualizar: (atualizada: Tripulacao) => void;
+}) {
+  const [capitaoId, setCapitaoId] = useState(tripulacao.capitaoId ? String(tripulacao.capitaoId) : "");
+  const [ponto, setPonto] = useState(tripulacao.pontoEncontro ?? "");
+  const [salvando, setSalvando] = useState(false);
+  const [aviso, setAviso] = useState<Aviso>(null);
+
+  async function salvar(caminho: string, corpo: unknown, mensagem: string) {
+    setSalvando(true);
+    setAviso(null);
+    try {
+      const atualizada = await api<Tripulacao>(caminho, { metodo: "PUT", corpo, autenticado: true });
+      aoAtualizar(atualizada);
+      setAviso({ tipo: "ok", texto: mensagem });
+    } catch {
+      setAviso({ tipo: "erro", texto: "Não foi possível salvar. Tente de novo." });
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <section className="flex flex-col gap-3 rounded-lg border p-3">
+      <p className="font-semibold">
+        {tripulacao.nome} <span className="text-sm font-normal text-muted-foreground">· {contar(tripulacao.membros.length, "pessoa", "pessoas")}</span>
+      </p>
+
+      <ul className="flex flex-col gap-1">
+        {tripulacao.membros.map((membro) => (
+          <li key={membro.id} className="text-sm">
+            {membro.nome}
+            {membro.id === tripulacao.capitaoId && " · capitão"}
+            <span className="text-xs text-muted-foreground">
+              {" "}
+              — {membro.ejNome}, {rotuloDe(CARGOS, membro.cargo)}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <div className="flex flex-col gap-2">
+        <label htmlFor={`capitao-${tripulacao.id}`} className="text-sm font-medium">
+          Capitão
+        </label>
+        <div className="flex gap-2">
+          <Selecao id={`capitao-${tripulacao.id}`} value={capitaoId} onChange={(e) => setCapitaoId(e.target.value)}>
+            <option value="" disabled>
+              Escolha quem a tripulação indicou
+            </option>
+            {tripulacao.membros.map((membro) => (
+              <option key={membro.id} value={membro.id}>
+                {membro.nome}
+              </option>
+            ))}
+          </Selecao>
+          <Button
+            className="h-10"
+            disabled={salvando || capitaoId === "" || Number(capitaoId) === tripulacao.capitaoId}
+            onClick={() =>
+              salvar(
+                `/api/staff/tripulacoes/${tripulacao.id}/capitao`,
+                { congressistaId: Number(capitaoId) },
+                "Capitão salvo.",
+              )
+            }
+          >
+            Salvar
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <label htmlFor={`ponto-${tripulacao.id}`} className="text-sm font-medium">
+          Ponto de encontro
+        </label>
+        <div className="flex gap-2">
+          <Input
+            id={`ponto-${tripulacao.id}`}
+            value={ponto}
+            maxLength={200}
+            placeholder="Ex.: totem azul, hall de entrada"
+            onChange={(e) => setPonto(e.target.value)}
+            className="h-10"
+          />
+          <Button
+            className="h-10"
+            disabled={salvando || ponto.trim() === (tripulacao.pontoEncontro ?? "")}
+            onClick={() =>
+              salvar(
+                `/api/staff/tripulacoes/${tripulacao.id}/ponto-encontro`,
+                { texto: ponto },
+                "Ponto de encontro salvo.",
+              )
+            }
+          >
+            Salvar
+          </Button>
+        </div>
+      </div>
+
+      {aviso && (
+        <p role="status" className={aviso.tipo === "ok" ? "text-sm" : "text-sm text-destructive"}>
+          {aviso.texto}
+        </p>
+      )}
+    </section>
+  );
+}

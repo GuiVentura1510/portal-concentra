@@ -1,6 +1,7 @@
 package br.org.concentro.portal.tripulacao;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -15,6 +16,7 @@ import br.org.concentro.portal.cadastro.CongressistaRepository;
 import br.org.concentro.portal.cadastro.Ej;
 import br.org.concentro.portal.cadastro.EjRepository;
 import br.org.concentro.portal.cadastro.TempoMej;
+import jakarta.persistence.EntityManager;
 import com.jayway.jsonpath.JsonPath;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,9 +50,24 @@ class TripulacaoTests {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    // 12 congressistas em 4 EJs, mais uma conta do staff.
+    @Autowired
+    private TripulacaoRepository tripulacoes;
+
+    @Autowired
+    private EntityManager em;
+
+    // Começa sempre sem tripulações, mesmo que o banco local já tenha uma montagem
+    // de teste manual. Tudo é desfeito no fim do teste.
+    // Depois cria 12 congressistas em 4 EJs, mais uma conta do staff.
     @BeforeEach
     void criaContas() {
+        for (Congressista c : congressistas.comTripulacao()) {
+            c.entrarNa(null);
+        }
+        em.flush();
+        tripulacoes.deleteAll();
+        em.flush();
+
         String hash = passwordEncoder.encode(SENHA);
         List<Ej> quatroEjs = ejs.findAllByOrderByNomeAsc().subList(0, 4);
         for (int i = 0; i < 12; i++) {
@@ -82,6 +99,19 @@ class TripulacaoTests {
     void antesDaMontagemATripulacaoAindaNaoExiste() throws Exception {
         mvc.perform(get("/api/tripulacao").header("Authorization", token("pessoa0.teste@exemplo.com")))
             .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void resumoContaCongressistasETripulacoes() throws Exception {
+        String staff = token("staff.teste@exemplo.com");
+        mvc.perform(get("/api/staff/tripulacoes/resumo").header("Authorization", staff))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.tripulacoes").value(0))
+            .andExpect(jsonPath("$.comTripulacao").value(0));
+        montar();
+        mvc.perform(get("/api/staff/tripulacoes/resumo").header("Authorization", staff))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.tripulacoes").value(greaterThan(0)));
     }
 
     @Test

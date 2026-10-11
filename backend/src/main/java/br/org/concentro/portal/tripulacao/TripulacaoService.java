@@ -104,6 +104,16 @@ public class TripulacaoService {
         return resposta(tripulacao);
     }
 
+    // Números para o topo do painel do staff. Contas do staff não entram na conta.
+    @Transactional(readOnly = true)
+    public ResumoResposta resumo() {
+        List<Congressista> participantes = congressistas.findAll().stream()
+            .filter(c -> !staff.ehStaff(c.getEmail()))
+            .toList();
+        int comTripulacao = (int) participantes.stream().filter(c -> c.getTripulacao() != null).count();
+        return new ResumoResposta(participantes.size(), comTripulacao, (int) tripulacoes.count());
+    }
+
     // Todas as tripulações, para o staff.
     @Transactional(readOnly = true)
     public List<TripulacaoResposta> todas() {
