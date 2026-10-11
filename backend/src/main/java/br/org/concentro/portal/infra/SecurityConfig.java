@@ -8,6 +8,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -26,9 +28,18 @@ public class SecurityConfig {
                 // Rotas públicas: quem ainda não tem conta precisa alcançá-las.
                 .requestMatchers("/api/ping", "/actuator/health").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/ejs").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/cadastro").permitAll()
+                // Página de erro interna do Spring: sem isto, todo erro vira 403.
+                .requestMatchers("/error").permitAll()
                 // Todo o resto exige login.
                 .anyRequest().authenticated());
         return http.build();
+    }
+
+    // Gera e confere o hash das senhas (BCrypt).
+    @Bean
+    PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
     @Bean
