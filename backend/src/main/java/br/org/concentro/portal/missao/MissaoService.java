@@ -14,7 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class MissaoService {
 
     private static final String TEM_HISTORICO =
-        "Esta missão já tem respostas ou pontos lançados. Para tirá-la do ar, desmarque \"visível\".";
+        "Esta missão tem envios valendo pontos. Retire-os na aba Envios ou desmarque \"visível\".";
 
     private final MissaoRepository missoes;
     private final ConclusaoRepository conclusoes;
@@ -56,23 +56,32 @@ public class MissaoService {
         return MissaoResposta.de(missao);
     }
 
-    // Exclui uma missão que ninguém respondeu. Com respostas ou pontos, recusa:
-    // apagar sumiria com pontos do ranking.
+    // Exclui uma missão sem envios valendo pontos (decidido em 12/10). Envios que o
+    // staff já retirou não impedem: são apagados junto. Com envio ativo ou pontos,
+    // recusa, porque apagar sumiria com pontos do ranking.
     @Transactional
     public void excluir(Long id) {
-        Missao missao = buscar(id);
-        if (temHistorico(id)) {
+        buscar(id);
+        if (temEnvioAtivo(id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, TEM_HISTORICO);
         }
         try {
-            missoes.delete(missao);
+            conclusoes.apagarRetiradasDaMissao(id);
+            missoes.deleteById(id);
             missoes.flush();
         } catch (DataIntegrityViolationException e) {
-            // Alguém respondeu entre a consulta e a exclusão: o banco barra.
+            // Alguém enviou entre a consulta e a exclusão: o banco barra e nada é apagado.
             throw new ResponseStatusException(HttpStatus.CONFLICT, TEM_HISTORICO);
         }
     }
 
+    // Envio pendente ou aceito, ou ponto lançado: impede a exclusão.
+    private boolean temEnvioAtivo(Long id) {
+        return conclusoes.existsByMissaoIdAndStatusIn(id, ConclusaoRepository.ATIVAS)
+            || lancamentos.existsByMissaoId(id);
+    }
+
+    // Qualquer resposta, mesmo retirada: impede trocar o alcance.
     private boolean temHistorico(Long id) {
         return conclusoes.existsByMissaoId(id) || lancamentos.existsByMissaoId(id);
     }

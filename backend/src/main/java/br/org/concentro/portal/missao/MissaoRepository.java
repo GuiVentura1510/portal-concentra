@@ -24,4 +24,9 @@ public interface MissaoRepository extends JpaRepository<Missao, Long> {
     @Query("update Missao m set m.vagasUsadas = m.vagasUsadas + 1 "
         + "where m.id = :id and (m.vagas is null or m.vagasUsadas < m.vagas)")
     int ocuparVaga(@Param("id") Long id);
+
+    // Devolve uma vaga quando o staff retira um envio. Nunca fica abaixo de zero.
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update Missao m set m.vagasUsadas = m.vagasUsadas - 1 where m.id = :id and m.vagasUsadas > 0")
+    int liberarVaga(@Param("id") Long id);
 }

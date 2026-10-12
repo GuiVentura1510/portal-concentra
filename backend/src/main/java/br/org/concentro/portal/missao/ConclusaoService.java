@@ -11,16 +11,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-// O jogo em si: o congressista vê as missões, envia a resposta (o capitão, nas da
-// tripulação; a própria pessoa, nas individuais), o staff aprova, recusa ou marca
-// direto, e cada aprovação vira um lançamento no extrato.
+// O jogo em si: o congressista vê as missões e envia a resposta (o capitão, nas da
+// tripulação; a própria pessoa, nas individuais), que é aceita na hora; o staff marca
+// direto ou retira um envio que não achar válido. Cada conclusão aceita vira um
+// lançamento no extrato, e a retirada apaga esse lançamento.
 @Service
 public class ConclusaoService {
+
+    // Quantos envios a aba Envios mostra de uma vez.
+    static final int LIMITE_ENVIOS = 300;
 
     private final MissaoRepository missoes;
     private final ConclusaoRepository conclusoes;
@@ -78,7 +83,8 @@ public class ConclusaoService {
         }).toList();
     }
 
-    // Envio de uma resposta. Fica pendente até o staff avaliar.
+    // Envio de uma resposta. Aceito na hora (decidido em 12/10): ocupa a vaga e lança
+    // os pontos. O staff pode retirar o envio depois, na aba Envios.
     @Transactional
     public MinhaConclusao enviar(Long missaoId, Long congressistaId, String texto) {
         Congressista eu = buscarCongressista(congressistaId);
@@ -100,16 +106,14 @@ public class ConclusaoService {
             }
         }
 
-        Conclusao conclusao;
-        String jaEnviou;
-        if (missao.individual()) {
-            jaEnviou = "Você já enviou esta missão.";
+        boolean individual = missao.individual();
+        String jaEnviou = individual ? "Você já enviou esta missão." : "Sua tripulação já enviou esta missão.";
+        Long tripulacaoId = null;
+        if (individual) {
             if (conclusoes.existeAtivaIndividual(missao.getId(), eu.getId())) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, jaEnviou);
             }
-            conclusao = Conclusao.enviadaIndividual(missao, eu, texto.trim(), agora);
         } else {
-            jaEnviou = "Sua tripulação já enviou esta missão.";
             Tripulacao tripulacao = eu.getTripulacao();
             if (tripulacao == null) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Você ainda não tem tripulação.");
@@ -121,42 +125,54 @@ public class ConclusaoService {
             if (conclusoes.existeAtiva(missao.getId(), tripulacao.getId())) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, jaEnviou);
             }
-            conclusao = Conclusao.enviada(missao, tripulacao, eu, texto.trim(), agora);
+            tripulacaoId = tripulacao.getId();
         }
+
+        ocuparVaga(missaoId);
+        // ocuparVaga limpa o contexto do JPA; tudo é lido de novo depois dela.
+        missao = missoes.findById(missaoId).orElseThrow();
+        eu = buscarCongressista(congressistaId);
+        Conclusao conclusao = individual
+            ? Conclusao.enviadaIndividual(missao, eu, texto.trim(), agora)
+            : Conclusao.enviada(missao, tripulacoes.findById(tripulacaoId).orElseThrow(), eu, texto.trim(), agora);
         try {
             conclusoes.saveAndFlush(conclusao);
         } catch (DataIntegrityViolationException e) {
-            // Dois envios ao mesmo tempo: o índice único do banco barra o segundo.
+            // Dois envios ao mesmo tempo: o índice único do banco barra o segundo, e a
+            // transação desfaz também a vaga ocupada.
             throw new ResponseStatusException(HttpStatus.CONFLICT, jaEnviou);
         }
+        // Lançamento sem "criado_por": foi aceito automaticamente, não por um staff.
+        lancar(conclusao, null, agora);
         return new MinhaConclusao(conclusao.getStatus(), conclusao.getResposta(), null);
     }
 
+    // Aba Envios do staff: as últimas conclusões que valem pontos, da mais nova para a
+    // mais antiga, incluindo os registros feitos pelo próprio staff.
     @Transactional(readOnly = true)
-    public List<ConclusaoResposta> fila(StatusConclusao status) {
-        return conclusoes.comStatus(status).stream().map(ConclusaoResposta::de).toList();
+    public List<ConclusaoResposta> envios() {
+        return conclusoes.aceitasRecentes(PageRequest.of(0, LIMITE_ENVIOS)).stream()
+            .map(ConclusaoResposta::de).toList();
     }
 
-    // Aprova um envio: ocupa uma vaga (se houver limite) e lança os pontos.
+    // Retira um envio (ou um registro do staff) que não vale: a conclusão vira
+    // "RECUSADA" com o motivo, os pontos são apagados e a vaga volta. A tripulação
+    // ou a pessoa pode enviar de novo enquanto a missão estiver aberta.
     @Transactional
-    public ConclusaoResposta aprovar(Long conclusaoId, Long staffId) {
-        Conclusao conclusao = buscarPendente(conclusaoId);
-        ocuparVaga(conclusao.getMissao().getId());
-        // ocuparVaga limpa o contexto do JPA; a conclusão é lida de novo.
-        conclusao = conclusoes.findById(conclusaoId).orElseThrow();
+    public ConclusaoResposta retirar(Long conclusaoId, Long staffId, String motivo) {
+        if (!conclusoes.existsById(conclusaoId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Envio não encontrado.");
+        }
         Congressista staff = buscarCongressista(staffId);
-        Instant agora = Instant.now();
-        conclusao.aprovar(staff, agora);
-        lancar(conclusao, staff, agora);
-        return ConclusaoResposta.de(conclusao);
-    }
-
-    @Transactional
-    public ConclusaoResposta recusar(Long conclusaoId, Long staffId, String motivo) {
-        Conclusao conclusao = buscarPendente(conclusaoId);
         String limpo = motivo == null || motivo.isBlank() ? null : motivo.trim();
-        conclusao.recusar(buscarCongressista(staffId), Instant.now(), limpo);
-        return ConclusaoResposta.de(conclusao);
+        if (conclusoes.retirar(conclusaoId, staff, Instant.now(), limpo) == 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este envio já foi retirado.");
+        }
+        lancamentos.apagarDaConclusao(conclusaoId);
+        Long missaoId = conclusoes.findById(conclusaoId).orElseThrow().getMissao().getId();
+        missoes.liberarVaga(missaoId);
+        // As operações acima limpam o contexto do JPA; a conclusão é lida de novo.
+        return ConclusaoResposta.de(conclusoes.findById(conclusaoId).orElseThrow());
     }
 
     // O staff marca direto que a tripulação (ou a pessoa, nas individuais) cumpriu,
@@ -259,15 +275,6 @@ public class ConclusaoService {
             // Dois staffs aprovando a mesma conclusão: só um lançamento vale.
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Esta conclusão já foi avaliada.");
         }
-    }
-
-    private Conclusao buscarPendente(Long conclusaoId) {
-        Conclusao conclusao = conclusoes.findById(conclusaoId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conclusão não encontrada."));
-        if (conclusao.getStatus() != StatusConclusao.PENDENTE) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Esta conclusão já foi avaliada.");
-        }
-        return conclusao;
     }
 
     private Congressista buscarCongressista(Long id) {

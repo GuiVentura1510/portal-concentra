@@ -121,7 +121,7 @@ function CartaoMissaoStaff({
     } catch (e) {
       setErro(
         e instanceof ErroApi && e.status === 409
-          ? 'Não excluída: esta missão já tem respostas ou pontos. Para tirá-la do ar, edite e desmarque "visível".'
+          ? 'Não excluída: esta missão tem envios valendo pontos. Retire-os na aba Envios, ou edite e desmarque "visível".'
           : "Não foi possível excluir. Tente de novo.",
       );
       setConfirmando(false);

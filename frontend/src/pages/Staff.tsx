@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 
 import { CartaoTripulacaoStaff, type MissaoMarcavel, type Tripulacao } from "@/components/CartaoTripulacaoStaff";
-import { FilaAprovacao } from "@/components/FilaAprovacao";
+import { EnviosStaff } from "@/components/EnviosStaff";
 import { PainelMissoes, type MissaoStaff } from "@/components/PainelMissoes";
 import { PainelPessoas } from "@/components/PainelPessoas";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ type Painel = {
   marcaveis: MissaoMarcavel[];
   individuais: MissaoMarcavel[];
 };
-type Aba = "tripulacoes" | "missoes" | "fila" | "pessoas";
+type Aba = "tripulacoes" | "missoes" | "envios" | "pessoas";
 
 // Busca o resumo, a lista de tripulações (se já houver) e as missões que o staff registra direto.
 async function buscarPainel(): Promise<Painel> {
@@ -151,8 +151,12 @@ export default function Staff() {
               >
                 Missões
               </Button>
-              <Button variant={aba === "fila" ? "default" : "outline"} className="h-10" onClick={() => setAba("fila")}>
-                Fila
+              <Button
+                variant={aba === "envios" ? "default" : "outline"}
+                className="h-10"
+                onClick={() => setAba("envios")}
+              >
+                Envios
               </Button>
               <Button
                 variant={aba === "pessoas" ? "default" : "outline"}
@@ -165,7 +169,7 @@ export default function Staff() {
           )}
 
           {estado === "pronto" && aba === "missoes" && <PainelMissoes aoMudar={() => void recarregar()} />}
-          {estado === "pronto" && aba === "fila" && <FilaAprovacao />}
+          {estado === "pronto" && aba === "envios" && <EnviosStaff />}
           {estado === "pronto" && aba === "pessoas" && <PainelPessoas missoesIndividuais={individuais} />}
 
           {estado === "pronto" && aba === "tripulacoes" && resumo && (

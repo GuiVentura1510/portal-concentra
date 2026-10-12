@@ -153,16 +153,11 @@ class MissaoIndividualTests {
             .andExpect(jsonPath("$[?(@.id == " + m.getId() + ")].possoEnviar").value(hasItem(true)));
         enviar(tokenColega, m.getId(), "Resposta do colega").andExpect(status().isCreated());
 
+        // Os dois envios já valem pontos e aparecem na aba Envios do staff.
         String staff = token("staff.teste@exemplo.com");
-        String fila = mvc.perform(get("/api/staff/conclusoes").header("Authorization", staff))
+        mvc.perform(get("/api/staff/conclusoes").header("Authorization", staff))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[?(@.missaoId == " + m.getId() + ")].congressistaNome").value(hasItem("Pessoa 0")))
-            .andReturn().getResponse().getContentAsString();
-        List<Integer> ids = JsonPath.read(fila, "$[?(@.missaoId == " + m.getId() + ")].id");
-        for (Integer id : ids) {
-            mvc.perform(post("/api/staff/conclusoes/" + id + "/aprovar").header("Authorization", staff))
-                .andExpect(status().isOk());
-        }
+            .andExpect(jsonPath("$[?(@.missaoId == " + m.getId() + ")].congressistaNome").value(hasItem("Pessoa 0")));
 
         // A tripulação não ganha nada com as missões individuais.
         mvc.perform(get("/api/ranking").header("Authorization", meuToken))
@@ -261,5 +256,28 @@ class MissaoIndividualTests {
             agora.plus(Duration.ofHours(1)), FormaConclusao.STAFF_MARCA, true));
         marcar(token("staff.teste@exemplo.com"), m.getId(), "{\"congressistaId\": " + pessoa(5).getId() + "}")
             .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void retiradaIndividualTiraOsPontosSoDaPessoa() throws Exception {
+        Missao m = individual(FormaConclusao.ENVIO_CAPITAO, null);
+        Congressista eu = pessoa(2);
+        Congressista colega = colegaDe(2);
+        String meuToken = token(eu.getEmail());
+        enviar(meuToken, m.getId(), "Minha").andExpect(status().isCreated());
+        enviar(token(colega.getEmail()), m.getId(), "Do colega").andExpect(status().isCreated());
+
+        Long minhaConclusao = conclusoes.doCongressista(eu.getId()).get(0).getId();
+        mvc.perform(post("/api/staff/conclusoes/" + minhaConclusao + "/retirar")
+                .header("Authorization", token("staff.teste@exemplo.com"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"motivo\": \"Resposta copiada\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("RECUSADA"));
+
+        mvc.perform(get("/api/ranking/individual").header("Authorization", meuToken))
+            .andExpect(jsonPath("$.total").value(1))
+            .andExpect(jsonPath("$.minha").doesNotExist());
+        mvc.perform(get("/api/missoes").header("Authorization", meuToken))
+            .andExpect(jsonPath("$[?(@.id == " + m.getId() + ")].possoEnviar").value(hasItem(true)));
     }
 }

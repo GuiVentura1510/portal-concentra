@@ -171,6 +171,24 @@ class MissaoTests {
     }
 
     @Test
+    void excluiMissaoDepoisDeRetirarOsEnvios() throws Exception {
+        String staff = token("staff.teste@exemplo.com");
+        long id = idCriado(staff, INDIVIDUAL);
+        marcarCongressista(staff, id);
+        String envios = mvc.perform(get("/api/staff/conclusoes").header("Authorization", staff))
+            .andReturn().getResponse().getContentAsString();
+        Number conclusaoId = JsonPath.<java.util.List<Number>>read(envios, "$[?(@.missaoId == " + id + ")].id").get(0);
+        mvc.perform(post("/api/staff/conclusoes/" + conclusaoId + "/retirar").header("Authorization", staff)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"motivo\": \"\"}"))
+            .andExpect(status().isOk());
+
+        mvc.perform(delete("/api/staff/missoes/" + id).header("Authorization", staff))
+            .andExpect(status().isNoContent());
+        mvc.perform(get("/api/staff/missoes").header("Authorization", staff))
+            .andExpect(jsonPath("$[*].id", not(hasItem((int) id))));
+    }
+
+    @Test
     void naoTrocaAlcanceDepoisDeRespostas() throws Exception {
         String staff = token("staff.teste@exemplo.com");
         long id = idCriado(staff, INDIVIDUAL);

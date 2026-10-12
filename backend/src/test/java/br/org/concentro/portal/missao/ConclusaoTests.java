@@ -139,36 +139,39 @@ class ConclusaoTests {
             .contentType(MediaType.APPLICATION_JSON).content("{\"tripulacaoId\": " + tripulacaoId + "}"));
     }
 
+    private ResultActions retirar(String staff, Long conclusaoId, String motivo) throws Exception {
+        return mvc.perform(post("/api/staff/conclusoes/" + conclusaoId + "/retirar").header("Authorization", staff)
+            .contentType(MediaType.APPLICATION_JSON).content("{\"motivo\": \"" + motivo + "\"}"));
+    }
+
     @Test
-    void capitaoEnviaStaffAprovaEATripulacaoPontua() throws Exception {
+    void capitaoEnviaETripulacaoPontuaNaHora() throws Exception {
         Missao m = aberta(FormaConclusao.ENVIO_CAPITAO, null);
         Congressista capitao = pessoa(0);
         Long tripulacaoId = capitao.getTripulacao().getId();
         tripulacaoService.definirCapitao(tripulacaoId, capitao.getId());
         String tokenCapitao = token(capitao.getEmail());
 
-        enviar(tokenCapitao, m.getId(), "Nossas duas dores: vendas e liderança").andExpect(status().isCreated());
+        enviar(tokenCapitao, m.getId(), "Nossas duas dores: vendas e liderança")
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.status").value("APROVADA"));
 
         mvc.perform(get("/api/missoes").header("Authorization", tokenCapitao))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[?(@.id == " + m.getId() + ")].minhaConclusao.status").value(hasItem("PENDENTE")))
+            .andExpect(jsonPath("$[?(@.id == " + m.getId() + ")].minhaConclusao.status").value(hasItem("APROVADA")))
             .andExpect(jsonPath("$[?(@.id == " + m.getId() + ")].possoEnviar").value(hasItem(false)));
 
-        String staff = token("staff.teste@exemplo.com");
-        String fila = mvc.perform(get("/api/staff/conclusoes").header("Authorization", staff))
-            .andExpect(status().isOk())
-            .andReturn().getResponse().getContentAsString();
-        List<Integer> ids = JsonPath.read(fila, "$[?(@.missaoId == " + m.getId() + ")].id");
-
-        mvc.perform(post("/api/staff/conclusoes/" + ids.get(0) + "/aprovar").header("Authorization", staff))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").value("APROVADA"));
-
+        // Pontua sem passar pelo staff.
         mvc.perform(get("/api/ranking").header("Authorization", tokenCapitao))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].tripulacaoId").value(tripulacaoId))
             .andExpect(jsonPath("$[0].pontos").value(100))
             .andExpect(jsonPath("$[0].posicao").value(1));
+
+        // E aparece na aba Envios do staff.
+        mvc.perform(get("/api/staff/conclusoes").header("Authorization", token("staff.teste@exemplo.com")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[?(@.missaoId == " + m.getId() + ")].enviadaPor").value(hasItem("Pessoa 0")));
     }
 
     @Test
@@ -186,24 +189,47 @@ class ConclusaoTests {
     }
 
     @Test
-    void recusadaPermiteReenviar() throws Exception {
+    void retiradaApagaOsPontosEPermiteReenviar() throws Exception {
         Missao m = aberta(FormaConclusao.ENVIO_CAPITAO, null);
         String membro = token(pessoa(1).getEmail());
+        Long tripulacaoId = pessoa(1).getTripulacao().getId();
         enviar(membro, m.getId(), "Incompleta").andExpect(status().isCreated());
 
         String staff = token("staff.teste@exemplo.com");
-        Long conclusaoId = conclusoes.daTripulacao(pessoa(1).getTripulacao().getId()).get(0).getId();
-        mvc.perform(post("/api/staff/conclusoes/" + conclusaoId + "/recusar").header("Authorization", staff)
-                .contentType(MediaType.APPLICATION_JSON).content("{\"motivo\": \"Faltou a matriz\"}"))
+        Long conclusaoId = conclusoes.daTripulacao(tripulacaoId).get(0).getId();
+        retirar(staff, conclusaoId, "Faltou a matriz")
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("RECUSADA"));
+        // Retirar de novo: já foi retirado.
+        retirar(staff, conclusaoId, "De novo").andExpect(status().isConflict());
 
+        mvc.perform(get("/api/ranking").header("Authorization", membro))
+            .andExpect(jsonPath("$[?(@.tripulacaoId == " + tripulacaoId + ")].pontos").value(hasItem(0)));
         mvc.perform(get("/api/missoes").header("Authorization", membro))
             .andExpect(jsonPath("$[?(@.id == " + m.getId() + ")].minhaConclusao.motivoRecusa")
                 .value(hasItem("Faltou a matriz")))
             .andExpect(jsonPath("$[?(@.id == " + m.getId() + ")].possoEnviar").value(hasItem(true)));
 
         enviar(membro, m.getId(), "Completa agora").andExpect(status().isCreated());
+        mvc.perform(get("/api/ranking").header("Authorization", membro))
+            .andExpect(jsonPath("$[?(@.tripulacaoId == " + tripulacaoId + ")].pontos").value(hasItem(100)));
+    }
+
+    @Test
+    void enviosOcupamVagas() throws Exception {
+        Missao m = aberta(FormaConclusao.ENVIO_CAPITAO, 1);
+        Congressista outraPessoa = congressistas.findAll().stream()
+            .filter(c -> c.getEmail().startsWith("pessoa") && c.getTripulacao() != null
+                && !c.getTripulacao().getId().equals(pessoa(0).getTripulacao().getId()))
+            .findFirst().orElseThrow();
+        enviar(token(pessoa(0).getEmail()), m.getId(), "Primeira").andExpect(status().isCreated());
+        enviar(token(outraPessoa.getEmail()), m.getId(), "Segunda").andExpect(status().isConflict());
+
+        // Retirar o primeiro envio devolve a vaga.
+        retirar(token("staff.teste@exemplo.com"),
+            conclusoes.daTripulacao(pessoa(0).getTripulacao().getId()).get(0).getId(), "")
+            .andExpect(status().isOk());
+        enviar(token(outraPessoa.getEmail()), m.getId(), "Segunda").andExpect(status().isCreated());
     }
 
     @Test
@@ -248,8 +274,27 @@ class ConclusaoTests {
     }
 
     @Test
-    void congressistaNaoAcessaAFila() throws Exception {
-        mvc.perform(get("/api/staff/conclusoes").header("Authorization", token(pessoa(0).getEmail())))
+    void staffRetiraORegistroQueFezEAVagaVolta() throws Exception {
+        Missao m = aberta(FormaConclusao.STAFF_MARCA, 1);
+        Long tripulacaoA = pessoa(0).getTripulacao().getId();
+        Long tripulacaoB = tripulacoes.findAll().stream().map(t -> t.getId())
+            .filter(id -> !id.equals(tripulacaoA)).findFirst().orElseThrow();
+        String staff = token("staff.teste@exemplo.com");
+
+        String marcada = marcar(staff, m.getId(), tripulacaoA).andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+        marcar(staff, m.getId(), tripulacaoB).andExpect(status().isConflict());
+
+        retirar(staff, ((Number) JsonPath.read(marcada, "$.id")).longValue(), "Marcada por engano")
+            .andExpect(status().isOk());
+        marcar(staff, m.getId(), tripulacaoB).andExpect(status().isOk());
+    }
+
+    @Test
+    void congressistaNaoAcessaOsEnvios() throws Exception {
+        String membro = token(pessoa(0).getEmail());
+        mvc.perform(get("/api/staff/conclusoes").header("Authorization", membro))
             .andExpect(status().isForbidden());
+        retirar(membro, 1L, "").andExpect(status().isForbidden());
     }
 }

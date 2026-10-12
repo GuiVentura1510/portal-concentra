@@ -111,10 +111,10 @@ function CartaoMissao({
           Cumprida! +{missao.pontos} pontos {individual ? "no seu ranking individual" : "para a tripulação"}.
         </p>
       )}
-      {minha?.status === "PENDENTE" && <p className="text-sm">Resposta enviada. Aguardando o staff.</p>}
+      {/* Desde 12/10 o envio vale na hora; "RECUSADA" é um envio retirado pelo staff. */}
       {minha?.status === "RECUSADA" && (
         <p className="text-sm text-destructive">
-          A resposta foi recusada{minha.motivoRecusa ? `: ${minha.motivoRecusa}` : "."}{" "}
+          O staff retirou este envio{minha.motivoRecusa ? `: ${minha.motivoRecusa}` : "."}{" "}
           {individual ? "Você pode enviar de novo." : "Vocês podem enviar de novo."}
         </p>
       )}

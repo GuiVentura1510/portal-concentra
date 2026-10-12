@@ -151,7 +151,7 @@ type Missao = {
   minhaConclusao: { status: "PENDENTE" | "APROVADA" | "RECUSADA" } | null;
 };
 
-// Histórico da pessoa: o que já foi cumprido e o que espera a avaliação do staff.
+// Histórico da pessoa: o que já foi cumprido (os envios valem na hora desde 12/10).
 // A lista vem das missões visíveis; uma missão que o staff esconder some daqui.
 function MissoesCumpridas() {
   const [missoes, setMissoes] = useState<Missao[] | null>(null);
@@ -162,7 +162,6 @@ function MissoesCumpridas() {
   }, []);
 
   const cumpridas = missoes?.filter((m) => m.minhaConclusao?.status === "APROVADA") ?? [];
-  const pendentes = missoes?.filter((m) => m.minhaConclusao?.status === "PENDENTE") ?? [];
 
   return (
     <section className="flex flex-col gap-2 text-center">
@@ -178,12 +177,6 @@ function MissoesCumpridas() {
             {contar(cumpridas.length, "missão cumprida", "missões cumpridas")}, somando as suas e as da tripulação.
           </p>
           <ListaDeMissoes missoes={cumpridas} />
-        </>
-      )}
-      {pendentes.length > 0 && (
-        <>
-          <h3 className="text-sm font-semibold">Aguardando o staff</h3>
-          <ListaDeMissoes missoes={pendentes} />
         </>
       )}
     </section>

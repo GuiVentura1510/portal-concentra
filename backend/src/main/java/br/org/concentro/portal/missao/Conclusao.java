@@ -67,16 +67,18 @@ public class Conclusao {
     protected Conclusao() {
     }
 
-    // Resposta enviada pelo capitão; espera a avaliação do staff.
+    // Resposta enviada pelo capitão. Aceita na hora (decisão de 12/10): fica aprovada,
+    // sem staff em "avaliada_por". O staff pode retirar depois.
     public static Conclusao enviada(Missao missao, Tripulacao tripulacao, Congressista autor, String resposta,
             Instant agora) {
         Conclusao c = new Conclusao();
         c.missao = missao;
         c.tripulacao = tripulacao;
-        c.status = StatusConclusao.PENDENTE;
+        c.status = StatusConclusao.APROVADA;
         c.resposta = resposta;
         c.enviadaPor = autor;
         c.enviadaEm = agora;
+        c.avaliadaEm = agora;
         return c;
     }
 
@@ -94,16 +96,18 @@ public class Conclusao {
         return c;
     }
 
-    // Resposta enviada pela própria pessoa numa missão individual.
+    // Resposta enviada pela própria pessoa numa missão individual. Aceita na hora,
+    // como a da tripulação.
     public static Conclusao enviadaIndividual(Missao missao, Congressista pessoa, String resposta, Instant agora) {
         Conclusao c = new Conclusao();
         c.missao = missao;
         c.tripulacao = pessoa.getTripulacao();
         c.congressista = pessoa;
-        c.status = StatusConclusao.PENDENTE;
+        c.status = StatusConclusao.APROVADA;
         c.resposta = resposta;
         c.enviadaPor = pessoa;
         c.enviadaEm = agora;
+        c.avaliadaEm = agora;
         return c;
     }
 
@@ -122,18 +126,8 @@ public class Conclusao {
         return c;
     }
 
-    public void aprovar(Congressista staff, Instant agora) {
-        this.status = StatusConclusao.APROVADA;
-        this.avaliadaPor = staff;
-        this.avaliadaEm = agora;
-    }
-
-    public void recusar(Congressista staff, Instant agora, String motivo) {
-        this.status = StatusConclusao.RECUSADA;
-        this.avaliadaPor = staff;
-        this.avaliadaEm = agora;
-        this.motivoRecusa = motivo;
-    }
+    // A retirada pelo staff é feita no ConclusaoRepository.retirar, num "update ... where"
+    // condicional, para dois staffs não retirarem o mesmo envio ao mesmo tempo.
 
     public Long getId() {
         return id;

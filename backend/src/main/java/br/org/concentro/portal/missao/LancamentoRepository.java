@@ -2,12 +2,20 @@ package br.org.concentro.portal.missao;
 
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 // Acesso à tabela "lancamento".
 public interface LancamentoRepository extends JpaRepository<Lancamento, Long> {
 
     boolean existsByMissaoId(Long missaoId);
+
+    // Apaga os pontos de uma conclusão retirada pelo staff (no máximo um lançamento,
+    // pela regra "conclusao_id unique" da V6).
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("delete from Lancamento l where l.conclusao.id = :conclusaoId")
+    int apagarDaConclusao(@Param("conclusaoId") Long conclusaoId);
 
     // Ranking das tripulações: só os pontos das missões da tripulação. Os das missões
     // individuais (com a pessoa preenchida) contam só no ranking individual.
