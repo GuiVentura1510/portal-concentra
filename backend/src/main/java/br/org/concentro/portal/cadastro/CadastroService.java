@@ -47,7 +47,7 @@ public class CadastroService {
 
         Congressista novo = new Congressista(
             requisicao.nome().trim(), email, passwordEncoder.encode(requisicao.senha()), ej, requisicao.cargo(),
-            requisicao.tempoMej(), requisicao.areaAtuacao());
+            requisicao.tempoMej(), AreaPorCargo.conferir(requisicao.cargo(), requisicao.areaAtuacao()));
         try {
             congressistas.saveAndFlush(novo);
         } catch (DataIntegrityViolationException e) {

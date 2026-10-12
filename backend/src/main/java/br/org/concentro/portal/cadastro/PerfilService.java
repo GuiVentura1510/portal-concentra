@@ -37,6 +37,8 @@ public class PerfilService {
     @Transactional
     public Congressista atualizar(Long id, PerfilRequisicao requisicao) {
         Congressista c = buscar(id);
+        // Antes de qualquer mudança, para um pedido recusado não alterar nada.
+        AreaAtuacao area = AreaPorCargo.conferir(requisicao.cargo(), requisicao.areaAtuacao());
 
         boolean mudaEjOuTempo = !Objects.equals(c.getEj().getId(), requisicao.ejId())
             || c.getTempoMej() != requisicao.tempoMej();
@@ -51,7 +53,7 @@ public class PerfilService {
             c.atualizarEjETempo(ej, requisicao.tempoMej());
         }
 
-        c.atualizarDados(requisicao.nome().trim(), requisicao.cargo(), requisicao.areaAtuacao());
+        c.atualizarDados(requisicao.nome().trim(), requisicao.cargo(), area);
         return c;
     }
 

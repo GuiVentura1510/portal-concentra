@@ -48,6 +48,7 @@ public class Congressista {
     private TempoMej tempoMej;
 
     @Enumerated(EnumType.STRING)
+    // Vazia para trainee (V9).
     @Column(name = "area_atuacao", length = 50)
     private AreaAtuacao areaAtuacao;
 

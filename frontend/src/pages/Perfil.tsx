@@ -104,8 +104,12 @@ export default function Perfil() {
                     <dd>{rotuloDe(CARGOS, perfil.cargo)}</dd>
                     <dt className="text-muted-foreground">Tempo de MEJ</dt>
                     <dd>{rotuloDe(TEMPOS_MEJ, perfil.tempoMej)}</dd>
-                    <dt className="text-muted-foreground">Área</dt>
-                    <dd>{rotuloDe(AREAS_ATUACAO, perfil.areaAtuacao)}</dd>
+                    {perfil.areaAtuacao && (
+                      <>
+                        <dt className="text-muted-foreground">Área</dt>
+                        <dd>{rotuloDe(AREAS_ATUACAO, perfil.areaAtuacao)}</dd>
+                      </>
+                    )}
                     <dt className="text-muted-foreground">E-mail</dt>
                     <dd className="break-all">{perfil.email}</dd>
                   </dl>

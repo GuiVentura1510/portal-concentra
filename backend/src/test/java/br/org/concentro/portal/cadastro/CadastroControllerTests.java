@@ -36,9 +36,15 @@ class CadastroControllerTests {
 
     private ResultActions cadastrar(String nome, String email, String senha, Long ejId, String cargo)
             throws Exception {
+        return cadastrar(nome, email, senha, ejId, cargo, "\"PROJETOS\"");
+    }
+
+    // area vai como JSON: "\"PROJETOS\"" ou "null".
+    private ResultActions cadastrar(String nome, String email, String senha, Long ejId, String cargo, String area)
+            throws Exception {
         String corpo = """
-            {"nome": "%s", "email": "%s", "senha": "%s", "ejId": %d, "cargo": "%s", "tempoMej": "DE_1_A_2_ANOS", "areaAtuacao": "PROJETOS"}
-            """.formatted(nome, email, senha, ejId, cargo);
+            {"nome": "%s", "email": "%s", "senha": "%s", "ejId": %d, "cargo": "%s", "tempoMej": "DE_1_A_2_ANOS", "areaAtuacao": %s}
+            """.formatted(nome, email, senha, ejId, cargo, area);
         return mvc.perform(post("/api/cadastro")
             .contentType(MediaType.APPLICATION_JSON)
             .content(corpo));
@@ -88,5 +94,31 @@ class CadastroControllerTests {
     void recusaCargoForaDaLista() throws Exception {
         cadastrar("João", "joao3.teste@exemplo.com", "senhaSegura123", umaEj(), "ESTAGIARIO")
             .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void traineeCadastraSemArea() throws Exception {
+        cadastrar("Tiago Trainee", "tiago.trainee@exemplo.com", "senhaSegura123", umaEj(), "TRAINEE", "null")
+            .andExpect(status().isCreated());
+
+        Congressista salvo = congressistas.findByEmail("tiago.trainee@exemplo.com").orElseThrow();
+        assertThat(salvo.getCargo()).isEqualTo(Cargo.TRAINEE);
+        assertThat(salvo.getAreaAtuacao()).isNull();
+    }
+
+    @Test
+    void traineeQueEnviaAreaFicaSemArea() throws Exception {
+        cadastrar("Tina Trainee", "tina.trainee@exemplo.com", "senhaSegura123", umaEj(), "TRAINEE", "\"MARKETING\"")
+            .andExpect(status().isCreated());
+
+        assertThat(congressistas.findByEmail("tina.trainee@exemplo.com").orElseThrow().getAreaAtuacao()).isNull();
+    }
+
+    @Test
+    void projetistaPrecisaDeArea() throws Exception {
+        cadastrar("Paula", "paula.projetista@exemplo.com", "senhaSegura123", umaEj(), "PROJETISTA", "null")
+            .andExpect(status().isBadRequest());
+        cadastrar("Paula", "paula.projetista@exemplo.com", "senhaSegura123", umaEj(), "PROJETISTA", "\"COMERCIAL\"")
+            .andExpect(status().isCreated());
     }
 }

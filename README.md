@@ -312,8 +312,9 @@ O banco é configurado para validação do schema (`ddl-auto: validate`), então
 | `V6__conclusoes_e_pontos.sql` | `missao.vagas_usadas`, tabelas `conclusao` e `lancamento` |
 | `V7__missoes_individuais.sql` | `missao.alcance` e a pessoa em `conclusao` e `lancamento` |
 | `V8__foto_de_perfil.sql` | Tabela `foto_perfil` e `congressista.foto_chave` |
+| `V9__cargos_trainee_e_projetista.sql` | Cargos `TRAINEE` e `PROJETISTA`; área de atuação vazia só para trainee |
 
-Nos logs da API, a linha `Current version of schema "public": 8` confirma que todas foram aplicadas.
+Nos logs da API, a linha `now at version v9` (escrita depois de migrar) confirma que todas foram aplicadas. A linha `Current version of schema` é escrita antes e mostra a versão anterior.
 
 As classes anotadas com `@Entity` precisam bater com as tabelas: se houver diferença, o backend não inicia.
 

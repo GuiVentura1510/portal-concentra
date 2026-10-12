@@ -3,12 +3,20 @@
 export type Opcao = { valor: string; rotulo: string };
 
 export const CARGOS: Opcao[] = [
+  { valor: "TRAINEE", rotulo: "Trainee" },
   { valor: "ASSESSOR_CONSULTOR", rotulo: "Assessor(a) ou consultor(a)" },
+  { valor: "PROJETISTA", rotulo: "Projetista" },
   { valor: "GERENTE_COORDENADOR", rotulo: "Gerente ou coordenador(a)" },
   { valor: "DIRETOR", rotulo: "Diretor(a)" },
   { valor: "PRESIDENTE", rotulo: "Presidente" },
   { valor: "POS_JUNIOR", rotulo: "Pós-júnior" },
 ];
+
+// Trainee ainda não atua numa área da EJ: não responde "área de atuação"
+// (a API grava a área vazia; regra no AreaPorCargo do backend).
+export function cargoTemArea(cargo: string): boolean {
+  return cargo !== "TRAINEE";
+}
 
 export const TEMPOS_MEJ: Opcao[] = [
   { valor: "MENOS_DE_6_MESES", rotulo: "Menos de 6 meses" },
@@ -20,7 +28,7 @@ export const TEMPOS_MEJ: Opcao[] = [
 export const AREAS_ATUACAO: Opcao[] = [
   { valor: "PRESIDENCIA", rotulo: "Presidência" },
   { valor: "PROJETOS", rotulo: "Projetos" },
-  { valor: "COMERCIAL", rotulo: "Comercial" },
+  { valor: "COMERCIAL", rotulo: "Comercial/Negócios" },
   { valor: "MARKETING", rotulo: "Marketing" },
   { valor: "OPERACOES", rotulo: "Operações (Gestão de Pessoas e Financeiro)" },
 ];

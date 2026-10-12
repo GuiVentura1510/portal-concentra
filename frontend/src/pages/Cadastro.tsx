@@ -8,7 +8,7 @@ import { Selecao } from "@/components/Selecao";
 import { Input } from "@/components/ui/input";
 import { api, ErroApi } from "@/lib/api";
 import { BOTAO_EXPEDICAO, CAMPO, CARTAO_FORMULARIO, LINK_CARTAO } from "@/lib/estilos";
-import { AREAS_ATUACAO, CARGOS, TEMPOS_MEJ, type Opcao } from "@/lib/opcoes";
+import { AREAS_ATUACAO, CARGOS, TEMPOS_MEJ, cargoTemArea, type Opcao } from "@/lib/opcoes";
 import { salvarToken } from "@/lib/sessao";
 
 type Ej = { id: number; nome: string };
@@ -23,6 +23,8 @@ export default function Cadastro() {
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // Cargo escolhido: decide se a pergunta da área aparece.
+  const [cargo, setCargo] = useState("");
 
   useEffect(() => {
     api<Ej[]>("/api/ejs")
@@ -49,6 +51,7 @@ export default function Cadastro() {
           ejId: Number(dados.get("ejId")),
           cargo: dados.get("cargo"),
           tempoMej: dados.get("tempoMej"),
+          // Sem a pergunta (trainee), o campo não existe e vai null.
           areaAtuacao: dados.get("areaAtuacao"),
         },
       });
@@ -126,9 +129,9 @@ export default function Cadastro() {
               </Selecao>
               <p className="text-xs text-muted-foreground">Pós-júnior: escolha a EJ em que você esteve.</p>
             </Campo>
-            <Pergunta rotulo="Cargo na EJ" nome="cargo" opcoes={CARGOS} />
+            <Pergunta rotulo="Cargo na EJ" nome="cargo" opcoes={CARGOS} aoMudar={setCargo} />
             <Pergunta rotulo="Tempo de MEJ" nome="tempoMej" opcoes={TEMPOS_MEJ} />
-            <Pergunta rotulo="Área de atuação" nome="areaAtuacao" opcoes={AREAS_ATUACAO} />
+            {cargoTemArea(cargo) && <Pergunta rotulo="Área de atuação" nome="areaAtuacao" opcoes={AREAS_ATUACAO} />}
 
             {erro && (
               <p role="alert" className="text-sm text-destructive">
@@ -152,10 +155,27 @@ export default function Cadastro() {
 }
 
 // Uma pergunta de múltipla escolha do cadastro, todas obrigatórias.
-function Pergunta({ rotulo, nome, opcoes }: { rotulo: string; nome: string; opcoes: Opcao[] }) {
+function Pergunta({
+  rotulo,
+  nome,
+  opcoes,
+  aoMudar,
+}: {
+  rotulo: string;
+  nome: string;
+  opcoes: Opcao[];
+  aoMudar?: (valor: string) => void;
+}) {
   return (
     <Campo rotulo={rotulo} id={nome}>
-      <Selecao id={nome} name={nome} required defaultValue="" className={CAMPO}>
+      <Selecao
+        id={nome}
+        name={nome}
+        required
+        defaultValue=""
+        onChange={(e) => aoMudar?.(e.target.value)}
+        className={CAMPO}
+      >
         <option value="" disabled>
           Escolha uma opção
         </option>

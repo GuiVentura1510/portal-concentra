@@ -1,5 +1,6 @@
 package br.org.concentro.portal.cadastro;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -179,5 +180,33 @@ class PerfilEdicaoTests {
         mvc.perform(put("/api/perfil/senha").header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"senhaAtual\": \"%s\", \"novaSenha\": \"curta\"}".formatted(SENHA)))
             .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void viraTraineeEPerdeAArea() throws Exception {
+        mvc.perform(put("/api/perfil").header("Authorization", token(SENHA)).contentType(MediaType.APPLICATION_JSON)
+                .content(dados("Carla Perfil", duasEjs.get(0), "TRAINEE", "MENOS_DE_6_MESES", "MARKETING")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.cargo").value("TRAINEE"))
+            .andExpect(jsonPath("$.areaAtuacao").value(nullValue()));
+    }
+
+    @Test
+    void saiDeTraineeSoComArea() throws Exception {
+        String token = token(SENHA);
+        String semArea = """
+            {"nome": "Carla Perfil", "ejId": %d, "cargo": "%s", "tempoMej": "MENOS_DE_6_MESES", "areaAtuacao": null}
+            """;
+        mvc.perform(put("/api/perfil").header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                .content(semArea.formatted(duasEjs.get(0).getId(), "TRAINEE")))
+            .andExpect(status().isOk());
+
+        mvc.perform(put("/api/perfil").header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                .content(semArea.formatted(duasEjs.get(0).getId(), "PROJETISTA")))
+            .andExpect(status().isBadRequest());
+        mvc.perform(put("/api/perfil").header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                .content(dados("Carla Perfil", duasEjs.get(0), "PROJETISTA", "MENOS_DE_6_MESES", "COMERCIAL")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.areaAtuacao").value("COMERCIAL"));
     }
 }

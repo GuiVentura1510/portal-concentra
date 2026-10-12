@@ -5,13 +5,13 @@ import { Selecao } from "@/components/Selecao";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api, ErroApi } from "@/lib/api";
-import { AREAS_ATUACAO, CARGOS, TEMPOS_MEJ, rotuloDe, type Opcao } from "@/lib/opcoes";
+import { AREAS_ATUACAO, CARGOS, TEMPOS_MEJ, cargoTemArea, rotuloDe, type Opcao } from "@/lib/opcoes";
 import type { Perfil } from "@/lib/perfil";
 
 type Ej = { id: number; nome: string };
 
 // Formulário "Editar dados" da aba Perfil. Regras (decididas em 11/10):
-// - nome, cargo e área mudam sempre;
+// - nome, cargo e área mudam sempre (trainee fica sem área);
 // - EJ e tempo de MEJ só antes da montagem das tripulações (a API devolve
 //   "podeMudarEjETempo" e recusa com 409 depois);
 // - o e-mail não muda aqui: é o login e serve para conferir a inscrição.
@@ -28,6 +28,8 @@ export function EditarDados({
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const travado = !perfil.podeMudarEjETempo;
+  // Cargo escolhido no formulário: trainee não tem a pergunta da área.
+  const [cargo, setCargo] = useState(perfil.cargo);
 
   useEffect(() => {
     // A lista de EJs só é necessária enquanto a EJ pode mudar.
@@ -50,7 +52,8 @@ export function EditarDados({
           ejId: travado ? perfil.ejId : Number(dados.get("ejId")),
           tempoMej: travado ? perfil.tempoMej : String(dados.get("tempoMej")),
           cargo: String(dados.get("cargo")),
-          areaAtuacao: String(dados.get("areaAtuacao")),
+          // Trainee: o campo não existe e vai null.
+          areaAtuacao: dados.get("areaAtuacao"),
         },
       });
       aoSalvar(atualizado);
@@ -89,8 +92,10 @@ export function EditarDados({
         </>
       )}
 
-      <Lista rotulo="Cargo na EJ" nome="cargo" opcoes={CARGOS} valor={perfil.cargo} />
-      <Lista rotulo="Área de atuação" nome="areaAtuacao" opcoes={AREAS_ATUACAO} valor={perfil.areaAtuacao} />
+      <Lista rotulo="Cargo na EJ" nome="cargo" opcoes={CARGOS} valor={perfil.cargo} aoMudar={setCargo} />
+      {cargoTemArea(cargo) && (
+        <Lista rotulo="Área de atuação" nome="areaAtuacao" opcoes={AREAS_ATUACAO} valor={perfil.areaAtuacao ?? ""} />
+      )}
       <p className="text-xs text-muted-foreground">O e-mail não muda: ele é o seu login.</p>
 
       {erro && (
@@ -201,10 +206,28 @@ export function TrocarSenha() {
   );
 }
 
-function Lista({ rotulo, nome, opcoes, valor }: { rotulo: string; nome: string; opcoes: Opcao[]; valor: string }) {
+function Lista({
+  rotulo,
+  nome,
+  opcoes,
+  valor,
+  aoMudar,
+}: {
+  rotulo: string;
+  nome: string;
+  opcoes: Opcao[];
+  valor: string;
+  aoMudar?: (valor: string) => void;
+}) {
   return (
     <Campo rotulo={rotulo} id={nome}>
-      <Selecao id={nome} name={nome} required defaultValue={valor}>
+      <Selecao id={nome} name={nome} required defaultValue={valor} onChange={(e) => aoMudar?.(e.target.value)}>
+        {/* Sem valor atual (quem deixa de ser trainee), pede a escolha. */}
+        {valor === "" && (
+          <option value="" disabled>
+            Escolha uma opção
+          </option>
+        )}
         {opcoes.map((opcao) => (
           <option key={opcao.valor} value={opcao.valor}>
             {opcao.rotulo}

@@ -8,7 +8,8 @@ export type Perfil = {
   ejNome: string;
   cargo: string;
   tempoMej: string;
-  areaAtuacao: string;
+  // null para trainee, que não escolhe área.
+  areaAtuacao: string | null;
   staff: boolean;
   // Chave da foto de perfil (ver lib/foto.ts); null para quem não enviou foto.
   fotoChave: string | null;

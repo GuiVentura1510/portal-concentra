@@ -11,5 +11,6 @@ public record PerfilRequisicao(
     @NotNull Long ejId,
     @NotNull Cargo cargo,
     @NotNull TempoMej tempoMej,
-    @NotNull AreaAtuacao areaAtuacao) {
+    // Opcional só para trainee: o serviço confere com o AreaPorCargo.
+    AreaAtuacao areaAtuacao) {
 }
