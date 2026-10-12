@@ -18,7 +18,9 @@ Todas as funções previstas para o evento estão em produção desde 11/10/2026
 - [x] Missões individuais e exclusão de missões sem respostas
 - [x] Ranking individual
 - [x] Foto de perfil
-- [ ] Visual do site com a identidade do evento
+- [x] Capa da expedição e tema com a identidade do evento
+- [ ] Visual do Início de quem está logado
+- [ ] Logotipo oficial na capa
 - [ ] Ícones oficiais do PWA
 
 ## Como funciona
@@ -82,9 +84,11 @@ No frontend:
 
 | Pasta | Conteúdo |
 | --- | --- |
-| `src/pages/` | Telas (início, cadastro, login, ranking, staff) |
+| `src/pages/` | Telas (capa, início, cadastro, login, ranking, perfil, staff) |
 | `src/components/` | Componentes das telas, como os painéis do staff |
 | `src/components/ui/` | Componentes do shadcn/ui |
+| `src/assets/ilustracoes/` | Ilustrações do Manual de Identidade Visual em WebP (`pessoas/` e `estrelas/`) |
+| `src/index.css` | Fontes, cores do tema e céu estrelado do fundo |
 | `src/lib/api.ts` | Chamadas à API; o token só vai nas chamadas marcadas como autenticadas |
 | `src/lib/sessao.ts` | Guarda do token no aparelho |
 | `src/lib/opcoes.ts` | Códigos e textos de cargo, tempo de MEJ e área |
@@ -218,7 +222,7 @@ curl https://portal-concentra-api.onrender.com/api/ping
 
 | Endereço | Tela |
 | --- | --- |
-| `/` | Início. Visitante vê cadastro e login; congressista vê a tripulação e as missões; a conta do staff vê o painel do staff |
+| `/` | Início. Visitante vê a capa da expedição, com "Entrar na expedição" e "Criar conta de viajante"; congressista vê a tripulação e as missões; a conta do staff vê o painel do staff |
 | `/cadastro` | Cadastro, com login automático no fim |
 | `/login` | Login |
 | `/ranking` | Rankings das tripulações e individual, em abas, destacando a tripulação e a posição da pessoa |
@@ -240,6 +244,17 @@ Um endereço desconhecido volta para `/` (inclusive o antigo `/staff`). Em produ
 | Pessoas | Busca, registro de missão individual cumprida, senha temporária, remoção de foto, remoção de cadastro e cruzamento com a lista de inscritos |
 
 O site pode ser instalado na tela inicial do celular pelo manifesto em `frontend/public/manifest.webmanifest`. Não há service worker, de propósito: assim o celular nunca serve uma versão antiga quando houver correção durante o evento. Os ícones atuais são provisórios; para trocar, substitua os três PNG em `frontend/public/`.
+
+## Identidade visual
+
+O visual segue o mockup da capa e o Manual de Identidade Visual do Concentra 26.
+
+- **Fontes** (pacotes `@fontsource-variable`, sem arquivos na pasta): Nunito é a fonte de todo o site; Lora itálica fica na classe `font-titulo` ("Estrela Polar" e os números da capa); Caveat fica na classe `font-manuscrita` ("um só norte"). As três foram escolhidas pelo mockup, porque o Manual não informa as fontes. Para trocar, mude o `@import` e a variável correspondente no `src/index.css`.
+- **Duas superfícies:** a página é azul-noite com estrelas e os cartões são brancos. O `:root` do `src/index.css` tem as cores da página, e o bloco `[data-slot="card"]` troca as mesmas variáveis dentro de qualquer cartão. Assim botões, campos e textos do shadcn ficam legíveis nos dois lugares sem mudar cada componente.
+- **Cores da marca**, disponíveis como classes (`text-creme`, `bg-noite` etc.): `noite` #0a0e3d, `creme` #f7f2e2, `lilas` #c3cbff, `rosa` #f7a8d8, `ceu` #a4ccfa, `oceano` #51a8c8. Os contrastes de texto foram conferidos (mínimo de 4,5:1).
+- **Capa** (`src/pages/BoasVindas.tsx`): aparece em `/` para quem não está logado; a escolha entre capa e início fica no `App.tsx`. A ilustração (`src/components/CenaExpedicao.tsx`) ocupa a altura que sobra na tela, e tudo nela é posicionado em porcentagem, para caber em celulares de 360×640 a 412×915 sem rolagem. Os números do cartão (983 tripulantes, 3 missões, 1 magna final) são fixos, por decisão da organização, e ficam na lista `NUMEROS` no topo do arquivo.
+- **Logotipo:** provisório, em texto. O arquivo do Manual não tem transparência nem o "26". Quando chegar o oficial, ele substitui o componente `LogoProvisorio` da capa.
+- **Ilustrações:** as 22 do Manual estão em `src/assets/ilustracoes/`, em WebP (3,8 MB nos PNG originais, cerca de 0,6 MB em WebP). A capa usa a `pessoa-03`, a `pessoa-10` e a `estrela-grande-2`.
 
 ## Configuração
 
