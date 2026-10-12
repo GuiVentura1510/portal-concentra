@@ -18,6 +18,8 @@ Todas as funções previstas para o evento estão em produção desde 11/10/2026
 - [x] Missões individuais e exclusão de missões sem respostas
 - [x] Ranking individual
 - [x] Foto de perfil
+- [x] Edição dos dados do perfil e troca de senha
+- [x] Login e cadastro com o visual da expedição
 - [x] Capa da expedição e tema com a identidade do evento
 - [ ] Visual do Início de quem está logado
 - [ ] Logotipo oficial na capa
@@ -89,6 +91,7 @@ No frontend:
 | `src/components/ui/` | Componentes do shadcn/ui |
 | `src/assets/ilustracoes/` | Ilustrações do Manual de Identidade Visual em WebP (`pessoas/` e `estrelas/`) |
 | `src/index.css` | Fontes, cores do tema e céu estrelado do fundo |
+| `src/lib/estilos.ts` | Classes compartilhadas: botão da expedição, cartão dos formulários, campos e links |
 | `src/lib/api.ts` | Chamadas à API; o token só vai nas chamadas marcadas como autenticadas |
 | `src/lib/sessao.ts` | Guarda do token no aparelho |
 | `src/lib/opcoes.ts` | Códigos e textos de cargo, tempo de MEJ e área |
@@ -175,7 +178,9 @@ docker compose exec db psql -U portal -d portal -c "delete from lancamento; dele
 
 | Método e rota | Descrição |
 | --- | --- |
-| `GET /api/perfil` | Dados da pessoa, incluindo se é do staff e a chave da foto (`fotoChave`) |
+| `GET /api/perfil` | Dados da pessoa, incluindo se é do staff, a chave da foto (`fotoChave`) e se EJ e tempo de MEJ ainda podem mudar (`podeMudarEjETempo`) |
+| `PUT /api/perfil` | Edita os próprios dados: nome, cargo e área sempre; EJ e tempo de MEJ só antes da montagem das tripulações (409 depois). O e-mail não muda |
+| `PUT /api/perfil/senha` | Troca a própria senha: `{"senhaAtual", "novaSenha"}`. 400 se a senha atual estiver errada ou a nova tiver menos de 8 caracteres |
 | `PUT /api/perfil/foto` | Envia ou troca a própria foto: `{"imagem": "<JPEG em base64>"}`. Devolve a chave nova |
 | `DELETE /api/perfil/foto` | Remove a própria foto |
 | `GET /api/tripulacao` | Tripulação da pessoa (404 antes da montagem) |
@@ -223,10 +228,10 @@ curl https://portal-concentra-api.onrender.com/api/ping
 | Endereço | Tela |
 | --- | --- |
 | `/` | Início. Visitante vê a capa da expedição, com "Entrar na expedição" e "Criar conta de viajante"; congressista vê a tripulação e as missões; a conta do staff vê o painel do staff |
-| `/cadastro` | Cadastro, com login automático no fim |
-| `/login` | Login |
+| `/cadastro` | Cadastro ("Criar conta"), com login automático no fim |
+| `/login` | Login. "Esqueci minha senha" explica que o staff gera uma senha temporária |
 | `/ranking` | Rankings das tripulações e individual, em abas, destacando a tripulação e a posição da pessoa |
-| `/perfil` | Perfil: foto, dados do cadastro, tripulação, missões cumpridas e o botão de sair. Sem login, leva ao `/login` |
+| `/perfil` | Perfil: foto, dados do cadastro com "Editar dados", "Trocar senha", tripulação, missões cumpridas e o botão de sair. Sem login, leva ao `/login` |
 
 Quem está logado vê, no rodapé de `/`, `/ranking` e `/perfil`, a barra de abas Início, Ranking e Perfil.
 
@@ -253,7 +258,8 @@ O visual segue o mockup da capa e o Manual de Identidade Visual do Concentra 26.
 - **Duas superfícies:** a página é azul-noite com estrelas e os cartões são brancos. O `:root` do `src/index.css` tem as cores da página, e o bloco `[data-slot="card"]` troca as mesmas variáveis dentro de qualquer cartão. Assim botões, campos e textos do shadcn ficam legíveis nos dois lugares sem mudar cada componente.
 - **Cores da marca**, disponíveis como classes (`text-creme`, `bg-noite` etc.): `noite` #0a0e3d, `creme` #f7f2e2, `lilas` #c3cbff, `rosa` #f7a8d8, `ceu` #a4ccfa, `oceano` #51a8c8. Os contrastes de texto foram conferidos (mínimo de 4,5:1).
 - **Capa** (`src/pages/BoasVindas.tsx`): aparece em `/` para quem não está logado; a escolha entre capa e início fica no `App.tsx`. A ilustração (`src/components/CenaExpedicao.tsx`) ocupa a altura que sobra na tela, e tudo nela é posicionado em porcentagem, para caber em celulares de 360×640 a 412×915 sem rolagem. Os números do cartão (983 tripulantes, 3 missões, 1 magna final) são fixos, por decisão da organização, e ficam na lista `NUMEROS` no topo do arquivo.
-- **Logotipo:** provisório, em texto. O arquivo do Manual não tem transparência nem o "26". Quando chegar o oficial, ele substitui o componente `LogoProvisorio` da capa.
+- **Logotipo:** provisório, em texto. O arquivo do Manual não tem transparência nem o "26". Fica em `src/components/Logo.tsx`, usado pela capa, pelo login e pelo cadastro; quando chegar o oficial, a troca é só nesse arquivo.
+- **Login e cadastro:** cartão branco centralizado sobre a moldura `src/components/FundoDecorado.tsx` (estrelas e viajantes nos cantos, numa camada fixa que não rola com o formulário).
 - **Ilustrações:** as 22 do Manual estão em `src/assets/ilustracoes/`, em WebP (3,8 MB nos PNG originais, cerca de 0,6 MB em WebP). A capa usa a `pessoa-03`, a `pessoa-10` e a `estrela-grande-2`.
 
 ## Configuração
@@ -328,7 +334,7 @@ As classes anotadas com `@Entity` precisam bater com as tabelas: se houver difer
 - **Até 14/10:** cruzar os cadastros com a lista de inscritos na aba Pessoas e remover contas de teste e cadastros indevidos. O cruzamento só aponta: confira antes de remover, porque a pessoa pode ter usado outro e-mail.
 - **15/10:** montar as tripulações em produção. A montagem roda **uma única vez**; não aperte o botão antes da hora.
 - **Missões:** a organização cria as missões no painel. Uma missão sem respostas pode ser excluída; com respostas, só escondida.
-- **Senha esquecida:** na aba Pessoas, "Nova senha" gera uma senha temporária para passar à pessoa.
+- **Senha esquecida:** na aba Pessoas, "Nova senha" gera uma senha temporária para passar à pessoa. Depois de entrar, a pessoa pode trocá-la na aba Perfil, em "Trocar senha".
 - **Remoção de cadastro:** só é possível para quem não enviou nem avaliou missão, não lançou pontos e não é capitão.
 - **Foto inadequada:** na aba Pessoas, "Remover foto" tira a foto de alguém. A pessoa pode enviar outra depois.
 - **Capitão:** depois de registrado, só ele envia as respostas das missões da tripulação. As individuais, cada um envia a sua.
@@ -342,7 +348,7 @@ cd backend
 ./mvnw test
 ```
 
-São 68 testes, que sobem a aplicação inteira contra o banco local e, por isso, também aplicam as migrações pendentes. Os testes que gravam no banco usam `@Transactional` e são desfeitos no fim. Os relatórios ficam em `backend/target/surefire-reports/`.
+São 75 testes, que sobem a aplicação inteira contra o banco local e, por isso, também aplicam as migrações pendentes. Os testes que gravam no banco usam `@Transactional` e são desfeitos no fim. Os relatórios ficam em `backend/target/surefire-reports/`.
 
 O frontend não tem testes automatizados. A verificação dele é o lint e o build:
 
