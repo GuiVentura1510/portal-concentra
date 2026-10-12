@@ -44,9 +44,9 @@ export function MissoesDaTripulacao({ temTripulacao }: { temTripulacao: boolean 
     api<Missao[]>("/api/missoes", { autenticado: true }).then(setMissoes, () => setFalha(true));
   }, []);
 
-  if (falha) return <p className="text-sm">Não foi possível carregar as missões.</p>;
-  if (missoes === null) return <p className="text-sm text-muted-foreground">Carregando missões...</p>;
-  if (missoes.length === 0) return <p className="text-sm">As missões aparecem aqui durante o evento.</p>;
+  if (falha) return <p className="text-center text-sm">Não foi possível carregar as missões.</p>;
+  if (missoes === null) return <p className="text-center text-sm text-muted-foreground">Carregando missões...</p>;
+  if (missoes.length === 0) return <p className="text-center text-sm">As missões aparecem aqui durante o evento.</p>;
 
   return (
     <section className="flex flex-col gap-3">

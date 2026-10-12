@@ -47,20 +47,24 @@ export function MinhaTripulacao({
   }, [aoCarregar]);
 
   if (estado.tipo === "carregando") {
-    return <p className="text-sm text-muted-foreground">Carregando sua tripulação...</p>;
+    return <p className="text-center text-sm text-muted-foreground">Carregando sua tripulação...</p>;
   }
   if (estado.tipo === "aguardando") {
-    return <p className="text-sm">Sua tripulação será revelada no dia 15 de outubro.</p>;
+    return (
+      <p className="rounded-lg border border-dashed px-3 py-4 text-center text-sm">
+        Sua tripulação será revelada no dia <strong>15 de outubro</strong>.
+      </p>
+    );
   }
   if (estado.tipo === "falha") {
-    return <p className="text-sm">Não foi possível carregar sua tripulação. Tente de novo em instantes.</p>;
+    return <p className="text-center text-sm">Não foi possível carregar sua tripulação. Tente de novo em instantes.</p>;
   }
 
   const { tripulacao } = estado;
   const capitao = tripulacao.membros.find((m) => m.id === tripulacao.capitaoId);
 
   return (
-    <section className="flex flex-col gap-3 rounded-lg border p-3">
+    <section className="flex flex-col gap-3 rounded-lg border p-3 text-center">
       <div>
         <p className="text-xs text-muted-foreground">Sua tripulação</p>
         <p className="text-lg font-semibold">{tripulacao.nome}</p>
@@ -73,7 +77,7 @@ export function MinhaTripulacao({
         <span className="text-muted-foreground">Capitão: </span>
         {capitao ? capitao.nome : "a tripulação escolhe no evento."}
       </p>
-      <ul className="flex flex-col gap-2">
+      <ul className="mx-auto flex w-fit flex-col gap-2 text-left">
         {tripulacao.membros.map((membro) => (
           <li key={membro.id} className="flex items-center gap-3 text-sm">
             <Avatar

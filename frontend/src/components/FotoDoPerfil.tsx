@@ -74,24 +74,22 @@ export function FotoDoPerfil({
   }
 
   return (
-    <section className="flex flex-col gap-2">
-      <div className="flex items-center gap-4">
-        <Avatar nome={nome} fotoChave={fotoChave} className="size-20 text-2xl" />
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <Button
-            variant="outline"
-            className="h-10 w-full"
-            disabled={ocupado !== null}
-            onClick={() => campoArquivo.current?.click()}
-          >
-            {ocupado === "enviando" ? "Enviando..." : fotoChave ? "Trocar foto" : "Adicionar foto"}
+    <section className="flex flex-col items-center gap-3 text-center">
+      <Avatar nome={nome} fotoChave={fotoChave} className="size-24 text-3xl" />
+      <div className="flex w-full max-w-xs flex-col gap-2">
+        <Button
+          variant="outline"
+          className="h-10 w-full"
+          disabled={ocupado !== null}
+          onClick={() => campoArquivo.current?.click()}
+        >
+          {ocupado === "enviando" ? "Enviando..." : fotoChave ? "Trocar foto" : "Adicionar foto"}
+        </Button>
+        {fotoChave && (
+          <Button variant="ghost" className="h-10 w-full" disabled={ocupado !== null} onClick={remover}>
+            {ocupado === "removendo" ? "Removendo..." : "Remover foto"}
           </Button>
-          {fotoChave && (
-            <Button variant="ghost" className="h-10 w-full" disabled={ocupado !== null} onClick={remover}>
-              {ocupado === "removendo" ? "Removendo..." : "Remover foto"}
-            </Button>
-          )}
-        </div>
+        )}
       </div>
       {/* Campo de arquivo escondido: quem abre a galeria ou a câmera é o botão acima. */}
       <input

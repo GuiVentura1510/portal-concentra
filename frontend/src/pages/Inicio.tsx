@@ -47,7 +47,7 @@ export default function Inicio() {
   return (
     <main className="flex min-h-svh items-start justify-center p-4 sm:items-center">
       <Card className="w-full max-w-md">
-        <CardHeader>
+        <CardHeader className="text-center">
           <CardTitle>A Expedição da Estrela Polar</CardTitle>
           <CardDescription>Concentra DF 2026 · 17 e 18 de outubro</CardDescription>
         </CardHeader>
@@ -70,7 +70,7 @@ export default function Inicio() {
 
           {estado === "logado" && perfil && (
             <>
-              <p className="text-lg font-medium">Olá, {perfil.nome.split(" ")[0]}!</p>
+              <p className="text-center text-lg font-medium">Olá, {perfil.nome.split(" ")[0]}!</p>
               <MinhaTripulacao meuId={perfil.id} minhaFotoChave={perfil.fotoChave} aoCarregar={setTemTripulacao} />
               <MissoesDaTripulacao temTripulacao={temTripulacao} />
             </>

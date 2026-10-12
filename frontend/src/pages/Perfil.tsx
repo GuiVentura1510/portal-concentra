@@ -50,7 +50,7 @@ export default function Perfil() {
   return (
     <main className="flex min-h-svh items-start justify-center p-4">
       <Card className="w-full max-w-md">
-        <CardHeader>
+        <CardHeader className="text-center">
           <CardTitle>{perfil ? perfil.nome : "Seu perfil"}</CardTitle>
           <CardDescription>
             {perfil ? `${perfil.ejNome} · ${rotuloDe(CARGOS, perfil.cargo)}` : "A Expedição da Estrela Polar"}
@@ -79,7 +79,7 @@ export default function Perfil() {
               />
 
               <section className="flex flex-col gap-2">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-col items-center gap-2">
                   <h2 className="text-lg font-semibold">Seus dados</h2>
                   {!editando && (
                     <Button variant="outline" size="sm" onClick={() => setEditando(true)}>
@@ -97,7 +97,7 @@ export default function Perfil() {
                     aoCancelar={() => setEditando(false)}
                   />
                 ) : (
-                  <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+                  <dl className="mx-auto grid w-fit grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
                     <dt className="text-muted-foreground">EJ</dt>
                     <dd>{perfil.ejNome}</dd>
                     <dt className="text-muted-foreground">Cargo</dt>
@@ -115,7 +115,7 @@ export default function Perfil() {
               <TrocarSenha />
 
               {perfil.staff ? (
-                <p className="text-sm">
+                <p className="text-center text-sm">
                   Você está no staff, por isso não entra em tripulação nem cumpre missões. O painel do staff fica na
                   aba Início.
                 </p>
@@ -161,7 +161,7 @@ function MissoesCumpridas() {
   const pendentes = missoes?.filter((m) => m.minhaConclusao?.status === "PENDENTE") ?? [];
 
   return (
-    <section className="flex flex-col gap-2">
+    <section className="flex flex-col gap-2 text-center">
       <h2 className="text-lg font-semibold">Missões cumpridas</h2>
       {falha && <p className="text-sm">Não foi possível carregar as missões.</p>}
       {!falha && missoes === null && <p className="text-sm text-muted-foreground">Carregando missões...</p>}
@@ -190,7 +190,7 @@ function ListaDeMissoes({ missoes }: { missoes: Missao[] }) {
   return (
     <ul className="flex flex-col gap-1">
       {missoes.map((missao) => (
-        <li key={missao.id} className="flex items-start justify-between gap-2 rounded-lg border px-3 py-2 text-sm">
+        <li key={missao.id} className="flex items-start justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm">
           <span>
             {missao.titulo}
             <span className="block text-xs text-muted-foreground">
