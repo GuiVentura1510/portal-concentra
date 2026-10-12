@@ -1,7 +1,7 @@
 package br.org.concentro.portal.cadastro;
 
+import br.org.concentro.portal.infra.Jpeg;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -110,23 +110,6 @@ public class FotoService {
 
     // Confere o que chegou: base64 válido, dentro do limite e com cara de JPEG.
     private static byte[] decodificar(String imagemBase64) {
-        byte[] conteudo;
-        try {
-            conteudo = Base64.getDecoder().decode(imagemBase64.trim());
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Imagem inválida.");
-        }
-        if (conteudo.length > LIMITE_BYTES) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Foto grande demais.");
-        }
-        // Todo arquivo JPEG começa com os bytes FF D8 FF.
-        boolean jpeg = conteudo.length > 3
-            && (conteudo[0] & 0xFF) == 0xFF
-            && (conteudo[1] & 0xFF) == 0xD8
-            && (conteudo[2] & 0xFF) == 0xFF;
-        if (!jpeg) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A foto precisa ser uma imagem JPEG.");
-        }
-        return conteudo;
+        return Jpeg.decodificar(imagemBase64, LIMITE_BYTES, "Foto grande demais.");
     }
 }

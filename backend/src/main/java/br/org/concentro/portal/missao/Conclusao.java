@@ -63,6 +63,10 @@ public class Conclusao {
     @Column(name = "motivo_recusa", length = 500)
     private String motivoRecusa;
 
+    // Chave da foto do envio (V10), cópia da tabela "foto_envio". Vazia sem foto.
+    @Column(name = "foto_chave", length = 36)
+    private String fotoChave;
+
     // Construtor vazio exigido pelo JPA.
     protected Conclusao() {
     }
@@ -163,5 +167,14 @@ public class Conclusao {
 
     public String getMotivoRecusa() {
         return motivoRecusa;
+    }
+
+    public String getFotoChave() {
+        return fotoChave;
+    }
+
+    // Chamado antes de salvar o envio; a imagem é gravada logo depois, com o id.
+    public void anexarFoto(String chave) {
+        this.fotoChave = chave;
     }
 }

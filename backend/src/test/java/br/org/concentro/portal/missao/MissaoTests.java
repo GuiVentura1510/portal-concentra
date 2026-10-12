@@ -171,6 +171,20 @@ class MissaoTests {
     }
 
     @Test
+    void criaMissaoComFotoEMantemAComprovacaoAoEditar() throws Exception {
+        String staff = token("staff.teste@exemplo.com");
+        String comFoto = MAPA_DAS_DORES.replace("\"visivel\": true", "\"visivel\": true, \"comprovacao\": \"FOTO\"");
+        long id = idCriado(staff, comFoto);
+        // Sem o campo na edição, a comprovação continua a mesma.
+        mvc.perform(put("/api/staff/missoes/" + id).header("Authorization", staff)
+                .contentType(MediaType.APPLICATION_JSON).content(MAPA_DAS_DORES))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.comprovacao").value("FOTO"));
+        // Missão sem o campo pede texto.
+        criar(staff, MAPA_DAS_DORES).andExpect(jsonPath("$.comprovacao").value("TEXTO"));
+    }
+
+    @Test
     void excluiMissaoDepoisDeRetirarOsEnvios() throws Exception {
         String staff = token("staff.teste@exemplo.com");
         long id = idCriado(staff, INDIVIDUAL);

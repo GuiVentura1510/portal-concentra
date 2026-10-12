@@ -38,6 +38,7 @@ public class MissaoService {
         AlcanceMissao alcance = r.alcance() == null ? AlcanceMissao.TRIPULACAO : r.alcance();
         Missao missao = new Missao(r.titulo().trim(), descricao(r), r.pontos(), r.vagas(), instante(r.inicio()),
             instante(r.fim()), r.conclusao(), r.visivel(), alcance);
+        missao.definirComprovacao(r.comprovacao() == null ? Comprovacao.TEXTO : r.comprovacao());
         return MissaoResposta.de(missoes.save(missao));
     }
 
@@ -53,6 +54,9 @@ public class MissaoService {
         }
         missao.atualizar(r.titulo().trim(), descricao(r), r.pontos(), r.vagas(), instante(r.inicio()),
             instante(r.fim()), r.conclusao(), r.visivel(), alcance);
+        if (r.comprovacao() != null) {
+            missao.definirComprovacao(r.comprovacao());
+        }
         return MissaoResposta.de(missao);
     }
 

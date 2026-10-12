@@ -31,7 +31,7 @@ Todas as funções previstas para o evento estão em produção desde 11/10/2026
 2. **Tripulações.** Em 15/10 o staff monta as tripulações uma única vez. São grupos de 5 a 6 pessoas, de EJs diferentes, misturando novatos e veteranos. Quem se cadastra depois da montagem entra na hora numa tripulação com vaga e sem colega da mesma EJ. Os nomes são as 88 constelações.
 3. **Capitão e ponto de encontro.** A tripulação escolhe o capitão no evento e o staff registra no painel. O staff também define o ponto de encontro de cada tripulação.
 4. **Missões.** O staff cria as missões no painel, com pontos, vagas e horário. Cada missão é **da tripulação** (a tripulação cumpre junta, uma vez) ou **individual** (cada pessoa cumpre a sua). Há duas formas de conclusão:
-   - **Resposta pelo portal:** uma resposta em texto é enviada e vale pontos na hora; o staff pode retirar o envio depois, e aí a missão pode ser enviada de novo. Nas missões da tripulação, enquanto não há capitão qualquer membro pode enviar; depois, só o capitão. Nas individuais, cada pessoa envia a sua.
+   - **Resposta pelo portal:** a resposta (texto, foto ou os dois, conforme o que o staff escolheu na missão: "Só texto", "Texto ou foto" ou "Foto obrigatória") é enviada e vale pontos na hora; o staff pode retirar o envio depois, e aí a missão pode ser enviada de novo. Nas missões da tripulação, enquanto não há capitão qualquer membro pode enviar; depois, só o capitão. Nas individuais, cada pessoa envia a sua.
    - **Staff marca:** o staff registra a missão cumprida direto, como ao carimbar um passaporte: no cartão da tripulação ou, nas individuais, na aba Pessoas.
 5. **Rankings.** Cada aprovação gera um lançamento de pontos. São dois rankings separados:
    - **Tripulações:** soma só as missões da tripulação.
@@ -173,6 +173,7 @@ docker compose exec db psql -U portal -d portal -c "delete from lancamento; dele
 | `POST /api/cadastro` | Cria a conta e devolve o token |
 | `POST /api/login` | Devolve o token |
 | `GET /api/fotos/{chave}` | Imagem de uma foto de perfil (JPEG), pela chave sorteada no envio |
+| `GET /api/comprovacoes/{chave}` | Foto de um envio de missão (JPEG); a chave só chega ao staff e a quem enviou |
 
 ### Com login
 
@@ -185,7 +186,7 @@ docker compose exec db psql -U portal -d portal -c "delete from lancamento; dele
 | `DELETE /api/perfil/foto` | Remove a própria foto |
 | `GET /api/tripulacao` | Tripulação da pessoa (404 antes da montagem) |
 | `GET /api/missoes` | Missões visíveis, com a situação da tripulação em cada uma |
-| `POST /api/missoes/{id}/resposta` | Envio da resposta de uma missão |
+| `POST /api/missoes/{id}/resposta` | Envio da resposta de uma missão: `texto` e/ou `foto` (JPEG em base64, até 400 KB; o site reduz para 1280 px) |
 | `GET /api/ranking` | Tripulações por pontos (só missões da tripulação) |
 | `GET /api/ranking/individual` | Pessoas por pontos (só missões individuais): as 100 primeiras posições, a posição de quem pediu e o total |
 
@@ -312,8 +313,9 @@ O banco é configurado para validação do schema (`ddl-auto: validate`), então
 | `V7__missoes_individuais.sql` | `missao.alcance` e a pessoa em `conclusao` e `lancamento` |
 | `V8__foto_de_perfil.sql` | Tabela `foto_perfil` e `congressista.foto_chave` |
 | `V9__cargos_trainee_e_projetista.sql` | Cargos `TRAINEE` e `PROJETISTA`; área de atuação vazia só para trainee |
+| `V10__foto_nos_envios.sql` | `missao.comprovacao`, tabela `foto_envio` e `conclusao.foto_chave` |
 
-Nos logs da API, a linha `now at version v9` (escrita depois de migrar) confirma que todas foram aplicadas. A linha `Current version of schema` é escrita antes e mostra a versão anterior.
+Nos logs da API, a linha `now at version v10` (escrita depois de migrar) confirma que todas foram aplicadas. A linha `Current version of schema` é escrita antes e mostra a versão anterior.
 
 As classes anotadas com `@Entity` precisam bater com as tabelas: se houver diferença, o backend não inicia.
 
@@ -348,7 +350,7 @@ cd backend
 ./mvnw test
 ```
 
-São 84 testes, que sobem a aplicação inteira contra o banco local e, por isso, também aplicam as migrações pendentes. Os testes que gravam no banco usam `@Transactional` e são desfeitos no fim. Os relatórios ficam em `backend/target/surefire-reports/`.
+São 88 testes, que sobem a aplicação inteira contra o banco local e, por isso, também aplicam as migrações pendentes. Os testes que gravam no banco usam `@Transactional` e são desfeitos no fim. Os relatórios ficam em `backend/target/surefire-reports/`.
 
 O frontend não tem testes automatizados. A verificação dele é o lint e o build:
 

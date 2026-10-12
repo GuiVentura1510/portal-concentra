@@ -3,6 +3,7 @@ package br.org.concentro.portal.missao;
 import br.org.concentro.portal.acesso.EquipeStaff;
 import br.org.concentro.portal.cadastro.Congressista;
 import br.org.concentro.portal.cadastro.CongressistaRepository;
+import br.org.concentro.portal.infra.Jpeg;
 import br.org.concentro.portal.missao.MissaoDaTripulacao.MinhaConclusao;
 import br.org.concentro.portal.tripulacao.Tripulacao;
 import br.org.concentro.portal.tripulacao.TripulacaoRepository;
@@ -10,6 +11,8 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -27,22 +30,28 @@ public class ConclusaoService {
     // Quantos envios a aba Envios mostra de uma vez.
     static final int LIMITE_ENVIOS = 300;
 
+    // O site reduz a foto do envio para no máximo 1280 px (uns 100 a 250 KB).
+    // O limite tem folga, mas barra um arquivo grande mandado direto para a API.
+    static final int LIMITE_FOTO_BYTES = 400 * 1024;
+
     private final MissaoRepository missoes;
     private final ConclusaoRepository conclusoes;
     private final LancamentoRepository lancamentos;
     private final CongressistaRepository congressistas;
     private final TripulacaoRepository tripulacoes;
     private final EquipeStaff equipe;
+    private final FotoEnvioRepository fotosEnvio;
 
     public ConclusaoService(MissaoRepository missoes, ConclusaoRepository conclusoes,
             LancamentoRepository lancamentos, CongressistaRepository congressistas,
-            TripulacaoRepository tripulacoes, EquipeStaff equipe) {
+            TripulacaoRepository tripulacoes, EquipeStaff equipe, FotoEnvioRepository fotosEnvio) {
         this.missoes = missoes;
         this.conclusoes = conclusoes;
         this.lancamentos = lancamentos;
         this.congressistas = congressistas;
         this.tripulacoes = tripulacoes;
         this.equipe = equipe;
+        this.fotosEnvio = fotosEnvio;
     }
 
     // Missões visíveis, com a situação de cada uma para quem está logado.
@@ -76,17 +85,17 @@ public class ConclusaoService {
                 && situacao == SituacaoMissao.ABERTA && !ativa;
             Integer restantes = m.getVagas() == null ? null : Math.max(0, m.getVagas() - m.getVagasUsadas());
             MinhaConclusao minha = c == null ? null
-                : new MinhaConclusao(c.getStatus(), c.getResposta(), c.getMotivoRecusa());
+                : new MinhaConclusao(c.getStatus(), c.getResposta(), c.getMotivoRecusa(), c.getFotoChave());
             return new MissaoDaTripulacao(m.getId(), m.getTitulo(), m.getDescricao(), m.getPontos(), m.getVagas(),
-                restantes, m.getInicio(), m.getFim(), m.getConclusao(), m.getAlcance(), situacao, minha,
-                possoEnviar);
+                restantes, m.getInicio(), m.getFim(), m.getConclusao(), m.getAlcance(), m.getComprovacao(),
+                situacao, minha, possoEnviar);
         }).toList();
     }
 
     // Envio de uma resposta. Aceito na hora (decidido em 12/10): ocupa a vaga e lança
     // os pontos. O staff pode retirar o envio depois, na aba Envios.
     @Transactional
-    public MinhaConclusao enviar(Long missaoId, Long congressistaId, String texto) {
+    public MinhaConclusao enviar(Long missaoId, Long congressistaId, String texto, String foto) {
         Congressista eu = buscarCongressista(congressistaId);
         if (equipe.ehStaff(eu.getEmail())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Contas do staff não participam das missões.");
@@ -105,6 +114,11 @@ public class ConclusaoService {
                 // Pode seguir.
             }
         }
+        String limpo = texto == null ? "" : texto.trim();
+        boolean temFoto = foto != null && !foto.isBlank();
+        conferirComprovacao(missao.getComprovacao(), !limpo.isEmpty(), temFoto);
+        byte[] imagem = temFoto ? Jpeg.decodificar(foto, LIMITE_FOTO_BYTES, "Foto grande demais.") : null;
+        String resposta = limpo.isEmpty() ? null : limpo;
 
         boolean individual = missao.individual();
         String jaEnviou = individual ? "Você já enviou esta missão." : "Sua tripulação já enviou esta missão.";
@@ -133,8 +147,10 @@ public class ConclusaoService {
         missao = missoes.findById(missaoId).orElseThrow();
         eu = buscarCongressista(congressistaId);
         Conclusao conclusao = individual
-            ? Conclusao.enviadaIndividual(missao, eu, texto.trim(), agora)
-            : Conclusao.enviada(missao, tripulacoes.findById(tripulacaoId).orElseThrow(), eu, texto.trim(), agora);
+            ? Conclusao.enviadaIndividual(missao, eu, resposta, agora)
+            : Conclusao.enviada(missao, tripulacoes.findById(tripulacaoId).orElseThrow(), eu, resposta, agora);
+        String chave = imagem == null ? null : UUID.randomUUID().toString();
+        conclusao.anexarFoto(chave);
         try {
             conclusoes.saveAndFlush(conclusao);
         } catch (DataIntegrityViolationException e) {
@@ -142,9 +158,43 @@ public class ConclusaoService {
             // transação desfaz também a vaga ocupada.
             throw new ResponseStatusException(HttpStatus.CONFLICT, jaEnviou);
         }
+        if (imagem != null) {
+            fotosEnvio.saveAndFlush(new FotoEnvio(conclusao.getId(), chave, imagem));
+        }
         // Lançamento sem "criado_por": foi aceito automaticamente, não por um staff.
         lancar(conclusao, null, agora);
-        return new MinhaConclusao(conclusao.getStatus(), conclusao.getResposta(), null);
+        return new MinhaConclusao(conclusao.getStatus(), conclusao.getResposta(), null, chave);
+    }
+
+    // O que cada comprovação exige do envio.
+    private static void conferirComprovacao(Comprovacao comprovacao, boolean temTexto, boolean temFoto) {
+        switch (comprovacao) {
+            case TEXTO -> {
+                if (temFoto) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Esta missão não aceita foto.");
+                }
+                if (!temTexto) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Escreva a resposta.");
+                }
+            }
+            case TEXTO_OU_FOTO -> {
+                if (!temTexto && !temFoto) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Escreva a resposta ou envie uma foto.");
+                }
+            }
+            case FOTO -> {
+                if (!temFoto) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Esta missão pede uma foto.");
+                }
+            }
+        }
+    }
+
+    // Foto de um envio, pela chave do endereço. Lida direto do banco: só o staff e
+    // quem enviou abrem cada foto, poucas vezes.
+    @Transactional(readOnly = true)
+    public Optional<byte[]> lerFoto(String chave) {
+        return fotosEnvio.findByChave(chave).map(FotoEnvio::getConteudo);
     }
 
     // Aba Envios do staff: as últimas conclusões que valem pontos, da mais nova para a

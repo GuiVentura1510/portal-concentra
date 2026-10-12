@@ -17,7 +17,8 @@ public record ConclusaoResposta(
     String resposta,
     String enviadaPor,
     Instant enviadaEm,
-    String motivoRecusa) {
+    String motivoRecusa,
+    String fotoChave) {
 
     static ConclusaoResposta de(Conclusao c) {
         String autor = c.getEnviadaPor() == null ? null : c.getEnviadaPor().getNome();
@@ -27,6 +28,6 @@ public record ConclusaoResposta(
         String pessoaNome = c.getCongressista() == null ? null : c.getCongressista().getNome();
         return new ConclusaoResposta(c.getId(), c.getMissao().getId(), c.getMissao().getTitulo(),
             c.getMissao().getAlcance(), tripulacaoId, tripulacaoNome, pessoaId, pessoaNome, c.getStatus(),
-            c.getResposta(), autor, c.getEnviadaEm(), c.getMotivoRecusa());
+            c.getResposta(), autor, c.getEnviadaEm(), c.getMotivoRecusa(), c.getFotoChave());
     }
 }

@@ -297,4 +297,63 @@ class ConclusaoTests {
             .andExpect(status().isForbidden());
         retirar(membro, 1L, "").andExpect(status().isForbidden());
     }
+
+    // Começo de um JPEG (FF D8 FF E0 ...): a API só confere o cabeçalho.
+    private static final String JPEG = "/9j/4AAQSkZJRgABAQ==";
+
+    private ResultActions enviarCorpo(String token, Long missaoId, String corpo) throws Exception {
+        return mvc.perform(post("/api/missoes/" + missaoId + "/resposta").header("Authorization", token)
+            .contentType(MediaType.APPLICATION_JSON).content(corpo));
+    }
+
+    private Missao comComprovacao(Comprovacao comprovacao) {
+        Missao m = aberta(FormaConclusao.ENVIO_CAPITAO, null);
+        m.definirComprovacao(comprovacao);
+        return missoes.saveAndFlush(m);
+    }
+
+    @Test
+    void missaoComFotoObrigatoria() throws Exception {
+        Missao m = comComprovacao(Comprovacao.FOTO);
+        String membro = token(pessoa(0).getEmail());
+
+        enviarCorpo(membro, m.getId(), "{\"texto\": \"Sem foto\"}").andExpect(status().isBadRequest());
+        enviarCorpo(membro, m.getId(), "{\"foto\": \"bm9wZQ==\"}").andExpect(status().isBadRequest());
+
+        String resposta = enviarCorpo(membro, m.getId(), "{\"foto\": \"" + JPEG + "\"}")
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.status").value("APROVADA"))
+            .andReturn().getResponse().getContentAsString();
+        String chave = JsonPath.read(resposta, "$.fotoChave");
+
+        // A imagem abre sem token, pela chave.
+        mvc.perform(get("/api/comprovacoes/" + chave))
+            .andExpect(status().isOk())
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                .contentType(MediaType.IMAGE_JPEG));
+        mvc.perform(get("/api/comprovacoes/nao-existe")).andExpect(status().isNotFound());
+
+        mvc.perform(get("/api/missoes").header("Authorization", membro))
+            .andExpect(jsonPath("$[?(@.id == " + m.getId() + ")].comprovacao").value(hasItem("FOTO")))
+            .andExpect(jsonPath("$[?(@.id == " + m.getId() + ")].minhaConclusao.fotoChave").value(hasItem(chave)));
+        mvc.perform(get("/api/staff/conclusoes").header("Authorization", token("staff.teste@exemplo.com")))
+            .andExpect(jsonPath("$[?(@.missaoId == " + m.getId() + ")].fotoChave").value(hasItem(chave)));
+    }
+
+    @Test
+    void missaoDeTextoOuFoto() throws Exception {
+        Missao m = comComprovacao(Comprovacao.TEXTO_OU_FOTO);
+        String membro = token(pessoa(1).getEmail());
+        enviarCorpo(membro, m.getId(), "{\"texto\": \"  \"}").andExpect(status().isBadRequest());
+        enviarCorpo(membro, m.getId(), "{\"texto\": \"Só texto vale\"}").andExpect(status().isCreated());
+    }
+
+    @Test
+    void missaoDeTextoRecusaFoto() throws Exception {
+        Missao m = comComprovacao(Comprovacao.TEXTO);
+        String membro = token(pessoa(2).getEmail());
+        enviarCorpo(membro, m.getId(), "{\"texto\": \"Com foto\", \"foto\": \"" + JPEG + "\"}")
+            .andExpect(status().isBadRequest());
+        enviarCorpo(membro, m.getId(), "{\"foto\": null}").andExpect(status().isBadRequest());
+    }
 }

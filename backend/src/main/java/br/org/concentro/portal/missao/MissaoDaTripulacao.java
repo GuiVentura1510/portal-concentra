@@ -17,11 +17,13 @@ public record MissaoDaTripulacao(
     Instant fim,
     FormaConclusao conclusao,
     AlcanceMissao alcance,
+    Comprovacao comprovacao,
     SituacaoMissao situacao,
     MinhaConclusao minhaConclusao,
     boolean possoEnviar) {
 
     // A última tentativa nesta missão.
-    public record MinhaConclusao(StatusConclusao status, String resposta, String motivoRecusa) {
+    // "fotoChave" forma o endereço /api/comprovacoes/{chave}; vazia sem foto.
+    public record MinhaConclusao(StatusConclusao status, String resposta, String motivoRecusa, String fotoChave) {
     }
 }

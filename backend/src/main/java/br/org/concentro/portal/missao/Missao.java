@@ -48,6 +48,11 @@ public class Missao {
     @Column(nullable = false, length = 20)
     private AlcanceMissao alcance = AlcanceMissao.TRIPULACAO;
 
+    // O que o envio pede: texto, foto ou os dois (V10). Só vale para "resposta pelo portal".
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Comprovacao comprovacao = Comprovacao.TEXTO;
+
     // Vagas já ocupadas. Só muda pelo MissaoRepository.ocuparVaga (V6).
     @Column(name = "vagas_usadas", nullable = false)
     private int vagasUsadas;
@@ -122,6 +127,14 @@ public class Missao {
 
     public AlcanceMissao getAlcance() {
         return alcance;
+    }
+
+    public Comprovacao getComprovacao() {
+        return comprovacao;
+    }
+
+    public void definirComprovacao(Comprovacao comprovacao) {
+        this.comprovacao = comprovacao;
     }
 
     public boolean individual() {

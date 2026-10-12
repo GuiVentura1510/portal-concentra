@@ -21,13 +21,22 @@ export type MissaoStaff = {
   visivel: boolean;
   vagasUsadas: number;
   alcance: AlcanceMissao;
+  comprovacao: Comprovacao;
 };
 type Missao = MissaoStaff;
+type Comprovacao = "TEXTO" | "TEXTO_OU_FOTO" | "FOTO";
+
+// O que o envio pede. Só vale para "Resposta pelo portal".
+const COMPROVACOES: { valor: Comprovacao; rotulo: string }[] = [
+  { valor: "TEXTO", rotulo: "Só texto" },
+  { valor: "TEXTO_OU_FOTO", rotulo: "Texto ou foto (pelo menos um)" },
+  { valor: "FOTO", rotulo: "Foto obrigatória (texto opcional)" },
+];
 
 const FORMAS: { valor: FormaConclusao; rotulo: string }[] = [
   {
     valor: "ENVIO_CAPITAO",
-    rotulo: "Resposta pelo portal, aprovada pelo staff (nas da tripulação, quem envia é o capitão)",
+    rotulo: "Resposta pelo portal, que vale na hora (nas da tripulação, quem envia é o capitão)",
   },
   { valor: "STAFF_MARCA", rotulo: "O staff marca como cumprida" },
 ];
@@ -144,6 +153,11 @@ function CartaoMissaoStaff({
       </p>
       <p className="text-sm text-muted-foreground">{textoJanela(missao.inicio, missao.fim)}</p>
       <p className="text-sm text-muted-foreground">{FORMAS.find((f) => f.valor === missao.conclusao)?.rotulo}</p>
+      {missao.conclusao === "ENVIO_CAPITAO" && (
+        <p className="text-sm text-muted-foreground">
+          Envio: {COMPROVACOES.find((c) => c.valor === missao.comprovacao)?.rotulo ?? "Só texto"}
+        </p>
+      )}
 
       {!confirmando ? (
         <div className="grid grid-cols-2 gap-2">
@@ -202,6 +216,7 @@ function FormMissao({
       fim: campoParaApi(String(dados.get("fim") ?? "")),
       conclusao: dados.get("conclusao"),
       alcance: dados.get("alcance"),
+      comprovacao: dados.get("comprovacao"),
       visivel: dados.get("visivel") === "on",
     };
 
@@ -292,6 +307,15 @@ function FormMissao({
           {FORMAS.map((forma) => (
             <option key={forma.valor} value={forma.valor}>
               {forma.rotulo}
+            </option>
+          ))}
+        </Selecao>
+      </Campo>
+      <Campo rotulo="O que o envio pede (só para resposta pelo portal)" id="comprovacao">
+        <Selecao id="comprovacao" name="comprovacao" required defaultValue={missao?.comprovacao ?? "TEXTO"}>
+          {COMPROVACOES.map((c) => (
+            <option key={c.valor} value={c.valor}>
+              {c.rotulo}
             </option>
           ))}
         </Selecao>

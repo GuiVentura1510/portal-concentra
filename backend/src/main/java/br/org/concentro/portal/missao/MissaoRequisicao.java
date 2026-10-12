@@ -19,5 +19,7 @@ public record MissaoRequisicao(
     OffsetDateTime fim,
     @NotNull FormaConclusao conclusao,
     boolean visivel,
-    AlcanceMissao alcance) {
+    AlcanceMissao alcance,
+    // Sem "comprovacao", a missão nova pede texto e a existente mantém o que tinha.
+    Comprovacao comprovacao) {
 }
