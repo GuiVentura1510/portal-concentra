@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router";
+import { Navigate, useNavigate } from "react-router";
 
 import { MinhaTripulacao } from "@/components/MinhaTripulacao";
 import { Button } from "@/components/ui/button";
@@ -84,12 +84,10 @@ export default function Perfil() {
               </section>
 
               {perfil.staff ? (
-                <>
-                  <p className="text-sm">Você está no staff, por isso não entra em tripulação nem cumpre missões.</p>
-                  <Button asChild className="h-10 w-full">
-                    <Link to="/staff">Abrir painel do staff</Link>
-                  </Button>
-                </>
+                <p className="text-sm">
+                  Você está no staff, por isso não entra em tripulação nem cumpre missões. O painel do staff fica na
+                  aba Início.
+                </p>
               ) : (
                 <>
                   <MinhaTripulacao meuId={perfil.id} />

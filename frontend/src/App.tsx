@@ -6,7 +6,6 @@ import Inicio from "@/pages/Inicio";
 import Login from "@/pages/Login";
 import Perfil from "@/pages/Perfil";
 import Ranking from "@/pages/Ranking";
-import Staff from "@/pages/Staff";
 
 // Mapa de rotas do portal: cada endereço aponta para uma tela.
 export default function App() {
@@ -21,9 +20,10 @@ export default function App() {
         </Route>
         <Route path="/cadastro" element={<Cadastro />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/staff" element={<Staff />} />
         {/* Endereço desconhecido volta ao início, para ninguém cair em
-            uma tela em branco por causa de link digitado errado. */}
+            uma tela em branco por causa de link digitado errado. O antigo
+            "/staff" também cai aqui: o painel do staff agora é o próprio
+            início das contas do staff. */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

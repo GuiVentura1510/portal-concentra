@@ -14,12 +14,14 @@ import {
 import { api, ErroApi } from "@/lib/api";
 import type { Perfil } from "@/lib/perfil";
 import { lerToken } from "@/lib/sessao";
+import Staff from "@/pages/Staff";
 
 type Estado = "carregando" | "visitante" | "logado" | "falha";
 
-// Início do portal. Quem não entrou vê as opções de cadastro e login; quem
-// entrou vê a tripulação e as missões. Os dados do cadastro e o botão de sair
-// ficam na aba Perfil, e o ranking tem a própria aba.
+// Início do portal. Quem não entrou vê as opções de cadastro e login; o
+// congressista vê a tripulação e as missões; a conta do staff vê o painel do
+// staff. Os dados do cadastro e o botão de sair ficam na aba Perfil, e o
+// ranking tem a própria aba.
 export default function Inicio() {
   const [estado, setEstado] = useState<Estado>(() => (lerToken() ? "carregando" : "visitante"));
   const [perfil, setPerfil] = useState<Perfil | null>(null);
@@ -37,6 +39,10 @@ export default function Inicio() {
         setEstado(e instanceof ErroApi && e.status === 401 ? "visitante" : "falha");
       });
   }, []);
+
+  // Conta do staff: o início já é o painel. O staff não entra em tripulação
+  // nem cumpre missões, então a tela do congressista não teria o que mostrar.
+  if (estado === "logado" && perfil?.staff) return <Staff />;
 
   return (
     <main className="flex min-h-svh items-start justify-center p-4 sm:items-center">
@@ -65,19 +71,8 @@ export default function Inicio() {
           {estado === "logado" && perfil && (
             <>
               <p className="text-lg font-medium">Olá, {perfil.nome.split(" ")[0]}!</p>
-              {perfil.staff ? (
-                <>
-                  <p className="text-sm">Você está no staff, por isso não entra em tripulação.</p>
-                  <Button asChild className="h-10 w-full">
-                    <Link to="/staff">Abrir painel do staff</Link>
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <MinhaTripulacao meuId={perfil.id} aoCarregar={setTemTripulacao} />
-                  <MissoesDaTripulacao temTripulacao={temTripulacao} />
-                </>
-              )}
+              <MinhaTripulacao meuId={perfil.id} aoCarregar={setTemTripulacao} />
+              <MissoesDaTripulacao temTripulacao={temTripulacao} />
             </>
           )}
 

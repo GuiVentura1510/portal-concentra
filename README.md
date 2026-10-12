@@ -211,13 +211,17 @@ curl https://portal-concentra-api.onrender.com/api/ping
 
 | Endereço | Tela |
 | --- | --- |
-| `/` | Início. Visitante vê cadastro e login; congressista vê perfil, tripulação, missões e o botão do ranking; staff vê o acesso ao painel |
+| `/` | Início. Visitante vê cadastro e login; congressista vê a tripulação e as missões; a conta do staff vê o painel do staff |
 | `/cadastro` | Cadastro, com login automático no fim |
 | `/login` | Login |
 | `/ranking` | Rankings das tripulações e individual, em abas, destacando a tripulação e a posição da pessoa |
-| `/staff` | Painel do staff |
+| `/perfil` | Perfil: dados do cadastro, tripulação, missões cumpridas e o botão de sair. Sem login, leva ao `/login` |
 
-Um endereço desconhecido volta para `/`. Em produção, o Render reescreve `/*` para `/index.html`, para que as rotas funcionem ao abrir o link direto.
+Quem está logado vê, no rodapé de `/`, `/ranking` e `/perfil`, a barra de abas Início, Ranking e Perfil.
+
+O painel do staff não tem endereço próprio: é o início das contas do staff.
+
+Um endereço desconhecido volta para `/` (inclusive o antigo `/staff`). Em produção, o Render reescreve `/*` para `/index.html`, para que as rotas funcionem ao abrir o link direto.
 
 ### Painel do staff
 

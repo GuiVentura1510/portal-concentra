@@ -58,8 +58,9 @@ function estadoDoErro(e: unknown): Estado {
   return "falha";
 }
 
-// Painel do staff: tripulações e missões. Só abre para contas do staff;
-// a própria API recusa as outras.
+// Painel do staff: tripulações, missões, fila e pessoas. É a tela de início
+// das contas do staff (quem decide isso é o Inicio.tsx), por isso não tem
+// endereço próprio. A própria API recusa as contas que não são do staff.
 export default function Staff() {
   const [estado, setEstado] = useState<Estado>("carregando");
   const [resumo, setResumo] = useState<Resumo | null>(null);
@@ -103,15 +104,19 @@ export default function Staff() {
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle>Painel do staff</CardTitle>
-          <CardDescription>
-            <Link to="/" className="underline">
-              Voltar ao início
-            </Link>
-          </CardDescription>
+          <CardDescription>Concentra DF 2026 · 17 e 18 de outubro</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {estado === "carregando" && <p className="text-sm">Carregando...</p>}
-          {estado === "sem-acesso" && <p className="text-sm">Esta área é só para o staff do evento.</p>}
+          {/* A API recusou (403) uma conta que o perfil diz ser do staff: o
+              login foi feito antes de o e-mail entrar na lista do staff, e o
+              token ainda não tem o papel. Um login novo resolve. */}
+          {estado === "sem-acesso" && (
+            <p className="text-sm">
+              Sua conta entrou no staff depois do seu último login. Abra a aba Perfil, toque em "Sair" e entre de
+              novo para o painel aparecer.
+            </p>
+          )}
           {estado === "sem-login" && (
             <p className="text-sm">
               Sua sessão terminou.{" "}
