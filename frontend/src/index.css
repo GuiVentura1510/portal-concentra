@@ -12,6 +12,16 @@
     --font-sans: 'Nunito Variable', sans-serif;
     --font-titulo: 'Lora Variable', serif;
     --font-manuscrita: 'Caveat Variable', cursive;
+    /* Cores da marca, para usar direto nas telas (ex.: text-creme, bg-noite). */
+    --color-noite: #0a0e3d;
+    --color-creme: #f7f2e2;
+    --color-lilas: #c3cbff;
+    --color-rosa: #f7a8d8;
+    --color-ceu: #a4ccfa;
+    --color-oceano: #51a8c8;
+    /* Flutuação lenta das ilustrações (usada com motion-safe:). */
+    --animate-flutuar: flutuar 7s ease-in-out infinite alternate;
+    --animate-cintilar: cintilar 3.5s ease-in-out infinite alternate;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -52,31 +62,36 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Cores da Expedição da Estrela Polar. O site tem duas superfícies:
+   a página, azul-noite com estrelas, e os cartões, brancos. O :root vale para
+   a página; o bloco [data-slot="card"] logo abaixo troca as mesmas variáveis
+   dentro de qualquer cartão, então botões, campos e textos dos componentes do
+   shadcn ficam legíveis nos dois lugares sem mudar cada componente. */
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
+    --background: #0a0e3d;
+    --foreground: #f7f2e2;
+    --card: #ffffff;
+    --card-foreground: #1d2252;
+    --popover: #ffffff;
+    --popover-foreground: #1d2252;
+    --primary: #a4ccfa;
+    --primary-foreground: #0a0e3d;
+    --secondary: #1b2163;
+    --secondary-foreground: #f7f2e2;
+    --muted: #161b55;
+    --muted-foreground: #b3b8e0;
+    --accent: #1b2163;
+    --accent-foreground: #f7f2e2;
+    --destructive: #ff8a8a;
+    --border: rgb(195 203 255 / 0.18);
+    --input: rgb(195 203 255 / 0.3);
+    --ring: #a4ccfa;
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
     --chart-4: oklch(0.371 0 0);
     --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
+    --radius: 1rem;
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
     --sidebar-primary: oklch(0.205 0 0);
@@ -85,6 +100,25 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
+}
+
+/* Dentro dos cartões (fundo branco). Contrastes conferidos: texto 15:1,
+   texto suave 5,6:1, botão principal 5,7:1, erro 5,6:1. */
+[data-slot="card"] {
+    --background: #ffffff;
+    --foreground: #1d2252;
+    --primary: #2f5fd0;
+    --primary-foreground: #ffffff;
+    --secondary: #eceefd;
+    --secondary-foreground: #1d2252;
+    --muted: #f1f2fb;
+    --muted-foreground: #5f6496;
+    --accent: #eceefd;
+    --accent-foreground: #1d2252;
+    --destructive: #c62828;
+    --border: #dfe2f6;
+    --input: #c9cdea;
+    --ring: #6c8ef0;
 }
 
 .dark {
@@ -127,8 +161,32 @@
     }
   body {
     @apply bg-background text-foreground;
+    /* Céu: três camadas de pontos de luz com tamanhos de bloco diferentes
+       (para o desenho não se repetir à vista) sobre o degradê da noite. */
+    background-image:
+      radial-gradient(1px 1px at 23px 41px, rgb(255 255 255 / 0.7), transparent),
+      radial-gradient(1px 1px at 97px 13px, rgb(195 203 255 / 0.6), transparent),
+      radial-gradient(1.5px 1.5px at 151px 117px, rgb(255 255 255 / 0.55), transparent),
+      radial-gradient(1px 1px at 61px 149px, rgb(255 255 255 / 0.4), transparent),
+      radial-gradient(1px 1px at 131px 71px, rgb(255 255 255 / 0.35), transparent),
+      radial-gradient(1px 1px at 37px 211px, rgb(195 203 255 / 0.5), transparent),
+      radial-gradient(1.5px 1.5px at 199px 233px, rgb(255 255 255 / 0.5), transparent),
+      radial-gradient(1px 1px at 167px 23px, rgb(255 255 255 / 0.3), transparent),
+      linear-gradient(to bottom, #0a0e3d, #060930 55%, #03051b);
+    background-size: 173px 173px, 173px 173px, 173px 173px, 251px 251px, 251px 251px, 263px 263px, 263px 263px, 263px 263px, 100% 100%;
+    background-attachment: scroll;
+    min-height: 100svh;
     }
   html {
     @apply font-sans;
     }
+}
+@keyframes flutuar {
+  from { transform: translateY(-4px); }
+  to { transform: translateY(5px); }
+}
+
+@keyframes cintilar {
+  from { opacity: 0.45; }
+  to { opacity: 1; }
 }

@@ -1,6 +1,8 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 
 import { ComAbas } from "@/components/Abas";
+import { useLogado } from "@/lib/sessao";
+import BoasVindas from "@/pages/BoasVindas";
 import Cadastro from "@/pages/Cadastro";
 import Inicio from "@/pages/Inicio";
 import Login from "@/pages/Login";
@@ -14,7 +16,7 @@ export default function App() {
       <Routes>
         {/* Telas com a barra de abas embaixo (a barra só aparece com login). */}
         <Route element={<ComAbas />}>
-          <Route path="/" element={<Inicio />} />
+          <Route path="/" element={<Entrada />} />
           <Route path="/ranking" element={<Ranking />} />
           <Route path="/perfil" element={<Perfil />} />
         </Route>
@@ -28,4 +30,11 @@ export default function App() {
       </Routes>
     </BrowserRouter>
   );
+}
+
+// Endereço "/": quem não entrou vê a capa da expedição; quem entrou vê o
+// Início (tripulação e missões, ou o painel, no caso do staff). Ao sair da
+// conta, a troca é automática, porque useLogado avisa quando o token some.
+function Entrada() {
+  return useLogado() ? <Inicio /> : <BoasVindas />;
 }
