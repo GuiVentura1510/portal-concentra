@@ -12,5 +12,7 @@ public record PerfilResposta(
     AreaAtuacao areaAtuacao,
     boolean staff,
     // Chave da foto de perfil; nula para quem não enviou foto.
-    String fotoChave) {
+    String fotoChave,
+    // Falso depois da montagem das tripulações: a tela trava EJ e tempo de MEJ.
+    boolean podeMudarEjETempo) {
 }

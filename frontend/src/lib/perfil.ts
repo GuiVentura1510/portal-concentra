@@ -12,4 +12,6 @@ export type Perfil = {
   staff: boolean;
   // Chave da foto de perfil (ver lib/foto.ts); null para quem não enviou foto.
   fotoChave: string | null;
+  // Falso depois da montagem das tripulações: EJ e tempo de MEJ ficam travados.
+  podeMudarEjETempo: boolean;
 };

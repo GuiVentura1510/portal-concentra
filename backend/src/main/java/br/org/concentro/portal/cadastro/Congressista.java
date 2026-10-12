@@ -129,4 +129,18 @@ public class Congressista {
     public void trocarSenha(String novoHash) {
         this.senhaHash = novoHash;
     }
+
+    // Dados que a própria pessoa pode mudar a qualquer momento na aba Perfil.
+    public void atualizarDados(String nome, Cargo cargo, AreaAtuacao areaAtuacao) {
+        this.nome = nome;
+        this.cargo = cargo;
+        this.areaAtuacao = areaAtuacao;
+    }
+
+    // EJ e tempo de MEJ entram na montagem das tripulações: o PerfilService só
+    // chama este método antes da montagem.
+    public void atualizarEjETempo(Ej ej, TempoMej tempoMej) {
+        this.ej = ej;
+        this.tempoMej = tempoMej;
+    }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router";
 
+import { EditarDados, TrocarSenha } from "@/components/EditarPerfil";
 import { FotoDoPerfil } from "@/components/FotoDoPerfil";
 import { MinhaTripulacao } from "@/components/MinhaTripulacao";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ export default function Perfil() {
   const navegar = useNavigate();
   const [estado, setEstado] = useState<Estado>(() => (lerToken() ? "carregando" : "sem-login"));
   const [perfil, setPerfil] = useState<DadosDoPerfil | null>(null);
+  const [editando, setEditando] = useState(false);
 
   useEffect(() => {
     if (!lerToken()) return;
@@ -77,20 +79,40 @@ export default function Perfil() {
               />
 
               <section className="flex flex-col gap-2">
-                <h2 className="text-lg font-semibold">Seus dados</h2>
-                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-                  <dt className="text-muted-foreground">EJ</dt>
-                  <dd>{perfil.ejNome}</dd>
-                  <dt className="text-muted-foreground">Cargo</dt>
-                  <dd>{rotuloDe(CARGOS, perfil.cargo)}</dd>
-                  <dt className="text-muted-foreground">Tempo de MEJ</dt>
-                  <dd>{rotuloDe(TEMPOS_MEJ, perfil.tempoMej)}</dd>
-                  <dt className="text-muted-foreground">Área</dt>
-                  <dd>{rotuloDe(AREAS_ATUACAO, perfil.areaAtuacao)}</dd>
-                  <dt className="text-muted-foreground">E-mail</dt>
-                  <dd className="break-all">{perfil.email}</dd>
-                </dl>
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-lg font-semibold">Seus dados</h2>
+                  {!editando && (
+                    <Button variant="outline" size="sm" onClick={() => setEditando(true)}>
+                      Editar dados
+                    </Button>
+                  )}
+                </div>
+                {editando ? (
+                  <EditarDados
+                    perfil={perfil}
+                    aoSalvar={(atualizado) => {
+                      setPerfil(atualizado);
+                      setEditando(false);
+                    }}
+                    aoCancelar={() => setEditando(false)}
+                  />
+                ) : (
+                  <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+                    <dt className="text-muted-foreground">EJ</dt>
+                    <dd>{perfil.ejNome}</dd>
+                    <dt className="text-muted-foreground">Cargo</dt>
+                    <dd>{rotuloDe(CARGOS, perfil.cargo)}</dd>
+                    <dt className="text-muted-foreground">Tempo de MEJ</dt>
+                    <dd>{rotuloDe(TEMPOS_MEJ, perfil.tempoMej)}</dd>
+                    <dt className="text-muted-foreground">Área</dt>
+                    <dd>{rotuloDe(AREAS_ATUACAO, perfil.areaAtuacao)}</dd>
+                    <dt className="text-muted-foreground">E-mail</dt>
+                    <dd className="break-all">{perfil.email}</dd>
+                  </dl>
+                )}
               </section>
+
+              <TrocarSenha />
 
               {perfil.staff ? (
                 <p className="text-sm">
