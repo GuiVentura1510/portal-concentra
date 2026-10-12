@@ -2,17 +2,12 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 
 import { Campo } from "@/components/Campo";
+import { FundoDecorado } from "@/components/FundoDecorado";
+import { Logo } from "@/components/Logo";
 import { Selecao } from "@/components/Selecao";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { api, ErroApi } from "@/lib/api";
+import { BOTAO_EXPEDICAO, CAMPO, CARTAO_FORMULARIO, LINK_CARTAO } from "@/lib/estilos";
 import { AREAS_ATUACAO, CARGOS, TEMPOS_MEJ, type Opcao } from "@/lib/opcoes";
 import { salvarToken } from "@/lib/sessao";
 
@@ -86,19 +81,21 @@ export default function Cadastro() {
       : "Escolha sua EJ";
 
   return (
-    <main className="flex min-h-svh items-start justify-center p-4 sm:items-center">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Cadastro na Expedição</CardTitle>
-          <CardDescription>Use o mesmo e-mail da compra do ingresso.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={enviar} className="flex flex-col gap-4">
+    <FundoDecorado>
+      {/* O formulário é longo: no celular a página rola, e os enfeites do
+          fundo ficam parados. */}
+      <main className="flex min-h-svh flex-col items-center justify-center gap-8 px-5 py-10">
+        <Logo />
+        {/* data-slot="card": usa as cores de superfície clara do index.css. */}
+        <div data-slot="card" className={CARTAO_FORMULARIO}>
+          <h1 className="text-center text-3xl font-extrabold tracking-wide text-noite">CRIAR CONTA</h1>
+          <p className="mt-2 text-center text-sm text-muted-foreground">Use o mesmo e-mail da compra do ingresso.</p>
+          <form onSubmit={enviar} className="mt-6 flex flex-col gap-4">
             <Campo rotulo="Nome completo" id="nome">
-              <Input id="nome" name="nome" required maxLength={120} autoComplete="name" className="h-10" />
+              <Input id="nome" name="nome" required maxLength={120} autoComplete="name" className={CAMPO} />
             </Campo>
             <Campo rotulo="E-mail" id="email">
-              <Input id="email" name="email" type="email" required maxLength={254} autoComplete="email" className="h-10" />
+              <Input id="email" name="email" type="email" required maxLength={254} autoComplete="email" className={CAMPO} />
             </Campo>
             <Campo rotulo="Senha (mínimo de 8 caracteres)" id="senha">
               <Input
@@ -109,7 +106,7 @@ export default function Cadastro() {
                 minLength={8}
                 maxLength={72}
                 autoComplete="new-password"
-                className="h-10"
+                className={CAMPO}
               />
             </Campo>
             <label className="flex items-center gap-2 text-sm">
@@ -117,7 +114,7 @@ export default function Cadastro() {
               Mostrar senha
             </label>
             <Campo rotulo="Empresa júnior" id="ejId">
-              <Selecao id="ejId" name="ejId" required defaultValue="" disabled={ejs.length === 0}>
+              <Selecao id="ejId" name="ejId" required defaultValue="" disabled={ejs.length === 0} className={CAMPO}>
                 <option value="" disabled>
                   {textoEj}
                 </option>
@@ -138,19 +135,19 @@ export default function Cadastro() {
                 {erro}
               </p>
             )}
-            <Button type="submit" disabled={enviando} className="h-10 w-full">
+            <button type="submit" disabled={enviando} className={`mt-2 h-12 w-full text-lg disabled:opacity-60 ${BOTAO_EXPEDICAO}`}>
               {enviando ? "Enviando..." : "Criar conta"}
-            </Button>
+            </button>
             <p className="text-center text-sm">
               Já tem conta?{" "}
-              <Link to="/login" className="underline">
+              <Link to="/login" className={LINK_CARTAO}>
                 Entrar
               </Link>
             </p>
           </form>
-        </CardContent>
-      </Card>
-    </main>
+        </div>
+      </main>
+    </FundoDecorado>
   );
 }
 
@@ -158,7 +155,7 @@ export default function Cadastro() {
 function Pergunta({ rotulo, nome, opcoes }: { rotulo: string; nome: string; opcoes: Opcao[] }) {
   return (
     <Campo rotulo={rotulo} id={nome}>
-      <Selecao id={nome} name={nome} required defaultValue="">
+      <Selecao id={nome} name={nome} required defaultValue="" className={CAMPO}>
         <option value="" disabled>
           Escolha uma opção
         </option>

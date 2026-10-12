@@ -2,6 +2,8 @@ import { ArrowRight } from "lucide-react";
 import { Link } from "react-router";
 
 import { CenaExpedicao } from "@/components/CenaExpedicao";
+import { Logo } from "@/components/Logo";
+import { BOTAO_EXPEDICAO } from "@/lib/estilos";
 
 // Números do cartão. São fixos por decisão da organização (não vêm da API):
 // para mudar, é só trocar aqui.
@@ -19,7 +21,7 @@ export default function BoasVindas() {
     // rolagem lateral. A tela inteira cabe na altura do celular: a cena é a
     // parte que encolhe ou cresce (flex-1), o resto tem altura própria.
     <main className="mx-auto flex min-h-svh w-full max-w-md flex-col overflow-x-clip px-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-      <LogoProvisorio />
+      <Logo />
 
       <h1 className="mt-6 leading-none">
         <span className="block text-[1.75rem] font-extrabold text-creme">A Expedição da</span>
@@ -45,7 +47,7 @@ export default function BoasVindas() {
 
       <Link
         to="/login"
-        className="mt-5 flex h-14 items-center justify-center gap-3 rounded-full bg-gradient-to-r from-[#a0cbf7] to-oceano text-lg font-bold text-noite shadow-[0_0_28px_rgb(164_204_250/0.35)] transition-transform outline-none focus-visible:ring-4 focus-visible:ring-ceu/60 active:translate-y-px"
+        className={`mt-5 flex h-14 items-center justify-center gap-3 text-lg ${BOTAO_EXPEDICAO}`}
       >
         Entrar na expedição
         <ArrowRight className="size-5" aria-hidden="true" />
@@ -58,16 +60,5 @@ export default function BoasVindas() {
         Criar conta de viajante
       </Link>
     </main>
-  );
-}
-
-// Provisório até chegar o logotipo oficial com fundo transparente (o arquivo
-// do Manual não tem o "26" nem transparência). Quando chegar, trocar este
-// componente por <img src={logo} alt="Concentra 26" className="mx-auto h-5" />.
-function LogoProvisorio() {
-  return (
-    <p className="text-center text-lg leading-none font-semibold tracking-tight text-creme">
-      Concentra<span className="font-extrabold">26</span>
-    </p>
   );
 }
