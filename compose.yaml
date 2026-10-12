@@ -1,6 +1,9 @@
 services:
   db:
     image: postgres:17
+    # Volta sozinho quando o Docker ou o computador reinicia.
+    # Só fica parado se você parar na mão (docker compose stop).
+    restart: unless-stopped
     environment:
       POSTGRES_DB: portal
       POSTGRES_USER: portal
