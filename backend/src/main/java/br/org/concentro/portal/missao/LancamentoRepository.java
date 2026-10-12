@@ -22,15 +22,16 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, Long> {
     List<Object[]> placar();
 
     // Ranking individual: só os pontos das missões individuais, de quem já pontuou.
-    // Cada linha: id, nome, EJ, tripulação (pode ser nula), pontos, missões.
+    // Cada linha: id, nome, EJ, tripulação (pode ser nula), pontos, missões e a
+    // chave da foto (pode ser nula).
     @Query(nativeQuery = true, value = """
         select c.id, c.nome, e.nome as ej, t.nome as tripulacao, sum(l.pontos) as pontos,
-               count(distinct l.missao_id) as missoes
+               count(distinct l.missao_id) as missoes, c.foto_chave
         from lancamento l
         join congressista c on c.id = l.congressista_id
         join ej e on e.id = c.ej_id
         left join tripulacao t on t.id = c.tripulacao_id
-        group by c.id, c.nome, e.nome, t.nome
+        group by c.id, c.nome, e.nome, t.nome, c.foto_chave
         order by pontos desc, c.nome asc
         """)
     List<Object[]> placarIndividual();

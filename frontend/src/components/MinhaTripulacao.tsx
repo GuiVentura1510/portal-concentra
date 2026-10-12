@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 
+import { Avatar } from "@/components/Avatar";
 import { api, ErroApi } from "@/lib/api";
 import { CARGOS, rotuloDe } from "@/lib/opcoes";
 
-type Membro = { id: number; nome: string; ejNome: string; cargo: string };
+type Membro = { id: number; nome: string; ejNome: string; cargo: string; fotoChave: string | null };
 type Tripulacao = {
   id: number;
   nome: string;
@@ -21,9 +22,13 @@ type Estado =
 // e a tela mostra só o aviso.
 export function MinhaTripulacao({
   meuId,
+  minhaFotoChave,
   aoCarregar,
 }: {
   meuId: number;
+  // Foto atual de quem está logado. A lista de membros é buscada uma vez; sem
+  // isto, quem troca a foto na aba Perfil continuaria vendo a antiga aqui.
+  minhaFotoChave?: string | null;
   // Avisa a tela de cima se a pessoa já tem tripulação.
   aoCarregar?: (temTripulacao: boolean) => void;
 }) {
@@ -70,15 +75,21 @@ export function MinhaTripulacao({
       </p>
       <ul className="flex flex-col gap-2">
         {tripulacao.membros.map((membro) => (
-          <li key={membro.id} className="text-sm">
-            <p className="font-medium">
-              {membro.nome}
-              {membro.id === meuId && " (você)"}
-              {membro.id === tripulacao.capitaoId && " · capitão"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {membro.ejNome} · {rotuloDe(CARGOS, membro.cargo)}
-            </p>
+          <li key={membro.id} className="flex items-center gap-3 text-sm">
+            <Avatar
+              nome={membro.nome}
+              fotoChave={membro.id === meuId && minhaFotoChave !== undefined ? minhaFotoChave : membro.fotoChave}
+            />
+            <div className="min-w-0">
+              <p className="font-medium">
+                {membro.nome}
+                {membro.id === meuId && " (você)"}
+                {membro.id === tripulacao.capitaoId && " · capitão"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {membro.ejNome} · {rotuloDe(CARGOS, membro.cargo)}
+              </p>
+            </div>
           </li>
         ))}
       </ul>

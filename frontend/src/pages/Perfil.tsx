@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router";
 
+import { FotoDoPerfil } from "@/components/FotoDoPerfil";
 import { MinhaTripulacao } from "@/components/MinhaTripulacao";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,8 +18,8 @@ import { lerToken, sair } from "@/lib/sessao";
 
 type Estado = "carregando" | "sem-login" | "pronto" | "falha";
 
-// Aba Perfil: os dados do cadastro, a tripulação e as missões já cumpridas.
-// É também onde a pessoa sai da conta.
+// Aba Perfil: a foto, os dados do cadastro, a tripulação e as missões já
+// cumpridas. É também onde a pessoa sai da conta.
 export default function Perfil() {
   const navegar = useNavigate();
   const [estado, setEstado] = useState<Estado>(() => (lerToken() ? "carregando" : "sem-login"));
@@ -67,6 +68,14 @@ export default function Perfil() {
 
           {estado === "pronto" && perfil && (
             <>
+              <FotoDoPerfil
+                nome={perfil.nome}
+                fotoChave={perfil.fotoChave}
+                aoMudar={(fotoChave) => setPerfil({ ...perfil, fotoChave })}
+                // O staff não entra em tripulação nem no ranking, então a foto dele não aparece lá.
+                aviso={perfil.staff ? undefined : "Sua foto aparece para a sua tripulação e no ranking individual."}
+              />
+
               <section className="flex flex-col gap-2">
                 <h2 className="text-lg font-semibold">Seus dados</h2>
                 <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
@@ -90,7 +99,7 @@ export default function Perfil() {
                 </p>
               ) : (
                 <>
-                  <MinhaTripulacao meuId={perfil.id} />
+                  <MinhaTripulacao meuId={perfil.id} minhaFotoChave={perfil.fotoChave} />
                   <MissoesCumpridas />
                 </>
               )}

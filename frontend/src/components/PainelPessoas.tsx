@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 
+import { Avatar } from "@/components/Avatar";
 import type { MissaoMarcavel } from "@/components/CartaoTripulacaoStaff";
 import { Selecao } from "@/components/Selecao";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ type Pessoa = {
   cargo: string;
   tripulacaoNome: string | null;
   staff: boolean;
+  fotoChave: string | null;
 };
 
 // Separa os e-mails de um texto colado: uma coluna de planilha, uma lista com
@@ -25,7 +27,8 @@ function extrairEmails(texto: string): string[] {
 }
 
 // Painel do staff, aba Pessoas: busca, missões individuais marcadas pelo staff,
-// senha esquecida, remoção e cruzamento com a lista de inscritos.
+// senha esquecida, remoção de foto inadequada, remoção do cadastro e cruzamento
+// com a lista de inscritos.
 export function PainelPessoas({ missoesIndividuais }: { missoesIndividuais: MissaoMarcavel[] }) {
   return (
     <div className="flex flex-col gap-6">
@@ -137,7 +140,7 @@ function Cruzamento({ missoes }: { missoes: MissaoMarcavel[] }) {
   );
 }
 
-type Confirmacao = "senha" | "remover" | null;
+type Confirmacao = "senha" | "foto" | "remover" | null;
 
 function CartaoPessoa({
   pessoa,
@@ -149,6 +152,8 @@ function CartaoPessoa({
   aoRemover: () => void;
 }) {
   const [confirmando, setConfirmando] = useState<Confirmacao>(null);
+  // Cópia local: depois que o staff remove a foto, o cartão já mostra as iniciais.
+  const [fotoChave, setFotoChave] = useState(pessoa.fotoChave);
   const [senha, setSenha] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -163,16 +168,21 @@ function CartaoPessoa({
           autenticado: true,
         });
         setSenha(resposta.senha);
+      } else if (confirmando === "foto") {
+        await api(`/api/staff/congressistas/${pessoa.id}/foto`, { metodo: "DELETE", autenticado: true });
+        setFotoChave(null);
       } else if (confirmando === "remover") {
         await api(`/api/staff/congressistas/${pessoa.id}`, { metodo: "DELETE", autenticado: true });
         aoRemover();
       }
       setConfirmando(null);
     } catch (e) {
+      // Os códigos 409 e 400 só têm esse significado na remoção do cadastro.
+      const removendo = confirmando === "remover";
       setErro(
-        e instanceof ErroApi && e.status === 409
+        removendo && e instanceof ErroApi && e.status === 409
           ? "Não removido: esta pessoa já participou de missões ou é capitã de uma tripulação."
-          : e instanceof ErroApi && e.status === 400
+          : removendo && e instanceof ErroApi && e.status === 400
             ? "Você não pode remover a própria conta."
             : "Não foi possível concluir. Tente de novo.",
       );
@@ -183,16 +193,19 @@ function CartaoPessoa({
 
   return (
     <article className="flex flex-col gap-2 rounded-lg border p-3">
-      <div>
-        <p className="font-medium">
-          {pessoa.nome}
-          {pessoa.staff && " · staff"}
-        </p>
-        <p className="text-xs break-all text-muted-foreground">{pessoa.email}</p>
-        <p className="text-xs text-muted-foreground">
-          {pessoa.ejNome} · {rotuloDe(CARGOS, pessoa.cargo)}
-          {pessoa.tripulacaoNome && ` · tripulação ${pessoa.tripulacaoNome}`}
-        </p>
+      <div className="flex items-center gap-3">
+        <Avatar nome={pessoa.nome} fotoChave={fotoChave} className="size-12" />
+        <div className="min-w-0">
+          <p className="font-medium">
+            {pessoa.nome}
+            {pessoa.staff && " · staff"}
+          </p>
+          <p className="text-xs break-all text-muted-foreground">{pessoa.email}</p>
+          <p className="text-xs text-muted-foreground">
+            {pessoa.ejNome} · {rotuloDe(CARGOS, pessoa.cargo)}
+            {pessoa.tripulacaoNome && ` · tripulação ${pessoa.tripulacaoNome}`}
+          </p>
+        </div>
       </div>
 
       {senha && (
@@ -213,13 +226,21 @@ function CartaoPessoa({
           <Button variant="outline" className="h-10" onClick={() => setConfirmando("remover")}>
             Remover
           </Button>
+          {/* Só aparece para quem tem foto: serve para tirar uma foto inadequada. */}
+          {fotoChave && (
+            <Button variant="outline" className="col-span-2 h-10" onClick={() => setConfirmando("foto")}>
+              Remover foto
+            </Button>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-2">
           <p className="text-sm font-medium">
             {confirmando === "senha"
               ? "Gerar uma senha nova? A senha atual deixa de funcionar."
-              : "Remover este cadastro? Não dá para desfazer."}
+              : confirmando === "foto"
+                ? "Remover a foto desta pessoa? Ela pode enviar outra depois."
+                : "Remover este cadastro? Não dá para desfazer."}
           </p>
           <div className="grid grid-cols-2 gap-2">
             <Button className="h-10" disabled={enviando} onClick={executar}>

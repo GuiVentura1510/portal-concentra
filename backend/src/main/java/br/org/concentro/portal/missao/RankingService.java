@@ -78,7 +78,7 @@ public class RankingService {
         for (int i = 0; i < linhas.size(); i++) {
             Object[] l = linhas.get(i);
             lista.add(new PosicaoIndividual(posicoes[i], numero(l[0]), (String) l[1], (String) l[2], (String) l[3],
-                numero(l[4]), numero(l[5])));
+                numero(l[4]), numero(l[5]), (String) l[6]));
         }
         return List.copyOf(lista);
     }

@@ -56,6 +56,11 @@ public class Congressista {
     @JoinColumn(name = "tripulacao_id")
     private Tripulacao tripulacao;
 
+    // Chave da foto de perfil (V8), usada no endereço da imagem. Vazia para quem
+    // não enviou foto. A imagem em si fica na tabela "foto_perfil".
+    @Column(name = "foto_chave", length = 36)
+    private String fotoChave;
+
     // Construtor vazio exigido pelo JPA.
     protected Congressista() {
     }
@@ -109,6 +114,15 @@ public class Congressista {
 
     public void entrarNa(Tripulacao tripulacao) {
         this.tripulacao = tripulacao;
+    }
+
+    public String getFotoChave() {
+        return fotoChave;
+    }
+
+    // Chamado pelo FotoService ao enviar, trocar ou remover a foto (nulo = sem foto).
+    public void definirFoto(String chave) {
+        this.fotoChave = chave;
     }
 
     // Usado pelo staff quando a pessoa esquece a senha.

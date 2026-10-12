@@ -21,9 +21,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class StaffPessoasController {
 
     private final StaffPessoasService pessoas;
+    private final FotoService fotos;
 
-    public StaffPessoasController(StaffPessoasService pessoas) {
+    public StaffPessoasController(StaffPessoasService pessoas, FotoService fotos) {
         this.pessoas = pessoas;
+        this.fotos = fotos;
     }
 
     @GetMapping
@@ -40,6 +42,13 @@ public class StaffPessoasController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void remover(@PathVariable Long id, @AuthenticationPrincipal Jwt token) {
         pessoas.remover(id, Long.valueOf(token.getSubject()));
+    }
+
+    // Moderação: tira a foto de perfil de alguém. Sem foto, não faz nada.
+    @DeleteMapping("/{id}/foto")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removerFoto(@PathVariable Long id) {
+        fotos.removerPeloStaff(id);
     }
 
     @PostMapping("/cruzamento")

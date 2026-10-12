@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
+import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -27,6 +28,7 @@ type PosicaoIndividual = {
   tripulacaoNome: string | null;
   pontos: number;
   missoesCumpridas: number;
+  fotoChave: string | null;
 };
 type RankingIndividual = { posicoes: PosicaoIndividual[]; minha: PosicaoIndividual | null; total: number };
 
@@ -176,12 +178,15 @@ function ListaIndividual({ ranking }: { ranking: RankingIndividual }) {
                   (eu ? "bg-muted font-semibold" : "")
                 }
               >
-                <span>
-                  {linha.posicao}º {linha.nome}
-                  {eu && " (você)"}
-                  <span className="block text-xs font-normal text-muted-foreground">
-                    {linha.ejNome}
-                    {linha.tripulacaoNome && ` · ${linha.tripulacaoNome}`}
+                <span className="flex min-w-0 items-center gap-2">
+                  <Avatar nome={linha.nome} fotoChave={linha.fotoChave} className="size-8 text-xs" />
+                  <span className="min-w-0">
+                    {linha.posicao}º {linha.nome}
+                    {eu && " (você)"}
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      {linha.ejNome}
+                      {linha.tripulacaoNome && ` · ${linha.tripulacaoNome}`}
+                    </span>
                   </span>
                 </span>
                 <span className="shrink-0 text-right">

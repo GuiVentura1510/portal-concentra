@@ -28,6 +28,6 @@ public class PerfilController {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Conta não encontrada."));
         return new PerfilResposta(c.getId(), c.getNome(), c.getEmail(), c.getEj().getId(),
             c.getEj().getNome(), c.getCargo(), c.getTempoMej(), c.getAreaAtuacao(),
-            staff.ehStaff(c.getEmail()));
+            staff.ehStaff(c.getEmail()), c.getFotoChave());
     }
 }

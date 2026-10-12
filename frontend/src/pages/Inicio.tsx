@@ -71,7 +71,7 @@ export default function Inicio() {
           {estado === "logado" && perfil && (
             <>
               <p className="text-lg font-medium">Olá, {perfil.nome.split(" ")[0]}!</p>
-              <MinhaTripulacao meuId={perfil.id} aoCarregar={setTemTripulacao} />
+              <MinhaTripulacao meuId={perfil.id} minhaFotoChave={perfil.fotoChave} aoCarregar={setTemTripulacao} />
               <MissoesDaTripulacao temTripulacao={temTripulacao} />
             </>
           )}

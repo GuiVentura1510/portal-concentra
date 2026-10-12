@@ -1,8 +1,9 @@
 import { lerToken, sair } from "@/lib/sessao";
 
 // O endereço da API vem do ambiente para o mesmo código servir na máquina
-// local e em produção (no Render, a variável VITE_API_URL).
-const API_URL = import.meta.env.VITE_API_URL;
+// local e em produção (no Render, a variável VITE_API_URL). É exportado porque
+// as fotos de perfil montam o endereço da imagem com ele (ver lib/foto.ts).
+export const API_URL: string = import.meta.env.VITE_API_URL;
 
 // Erro com o código HTTP da resposta, para cada tela escolher a mensagem.
 // O código 0 significa que não deu para falar com o servidor.

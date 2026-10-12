@@ -10,4 +10,6 @@ export type Perfil = {
   tempoMej: string;
   areaAtuacao: string;
   staff: boolean;
+  // Chave da foto de perfil (ver lib/foto.ts); null para quem não enviou foto.
+  fotoChave: string | null;
 };

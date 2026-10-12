@@ -31,6 +31,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/ping", "/actuator/health").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/ejs").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/cadastro", "/api/login").permitAll()
+                // Fotos de perfil: a tag <img> não envia o token. Quem protege a
+                // foto é a chave sorteada no endereço.
+                .requestMatchers(HttpMethod.GET, "/api/fotos/*").permitAll()
                 // Página de erro interna do Spring: sem isto, todo erro vira 403.
                 .requestMatchers("/error").permitAll()
                 // Rotas do staff: exigem o papel STAFF no token.

@@ -27,13 +27,15 @@ public class StaffPessoasService {
     private final CongressistaRepository congressistas;
     private final PasswordEncoder passwordEncoder;
     private final EquipeStaff staff;
+    private final FotoService fotos;
     private final SecureRandom sorteio = new SecureRandom();
 
     public StaffPessoasService(CongressistaRepository congressistas, PasswordEncoder passwordEncoder,
-            EquipeStaff staff) {
+            EquipeStaff staff, FotoService fotos) {
         this.congressistas = congressistas;
         this.passwordEncoder = passwordEncoder;
         this.staff = staff;
+        this.fotos = fotos;
     }
 
     @Transactional(readOnly = true)
@@ -71,6 +73,8 @@ public class StaffPessoasService {
                 "Esta pessoa já participou de missões ou é capitã de uma tripulação; não pode ser removida.");
         }
         try {
+            // A foto sai antes, para não ficar guardada em memória depois da remoção.
+            fotos.apagar(pessoa);
             congressistas.delete(pessoa);
             congressistas.flush();
         } catch (DataIntegrityViolationException e) {
@@ -102,6 +106,6 @@ public class StaffPessoasService {
     private PessoaStaff paraPessoa(Congressista c) {
         String tripulacao = c.getTripulacao() == null ? null : c.getTripulacao().getNome();
         return new PessoaStaff(c.getId(), c.getNome(), c.getEmail(), c.getEj().getNome(), c.getCargo(), tripulacao,
-            staff.ehStaff(c.getEmail()));
+            staff.ehStaff(c.getEmail()), c.getFotoChave());
     }
 }

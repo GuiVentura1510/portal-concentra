@@ -11,6 +11,7 @@ public record TripulacaoResposta(
     Long capitaoId,
     List<Membro> membros) {
 
-    public record Membro(Long id, String nome, String ejNome, Cargo cargo) {
+    // "fotoChave" forma o endereço da foto de perfil; nula para quem não enviou foto.
+    public record Membro(Long id, String nome, String ejNome, Cargo cargo, String fotoChave) {
     }
 }

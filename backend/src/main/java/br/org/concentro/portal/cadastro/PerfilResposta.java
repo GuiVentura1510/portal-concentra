@@ -10,5 +10,7 @@ public record PerfilResposta(
     Cargo cargo,
     TempoMej tempoMej,
     AreaAtuacao areaAtuacao,
-    boolean staff) {
+    boolean staff,
+    // Chave da foto de perfil; nula para quem não enviou foto.
+    String fotoChave) {
 }

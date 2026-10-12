@@ -1,12 +1,13 @@
 import { useState } from "react";
 
+import { Avatar } from "@/components/Avatar";
 import { Selecao } from "@/components/Selecao";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api, ErroApi } from "@/lib/api";
 import { CARGOS, contar, rotuloDe } from "@/lib/opcoes";
 
-export type Membro = { id: number; nome: string; ejNome: string; cargo: string };
+export type Membro = { id: number; nome: string; ejNome: string; cargo: string; fotoChave: string | null };
 export type Tripulacao = {
   id: number;
   nome: string;
@@ -84,12 +85,15 @@ export function CartaoTripulacaoStaff({
 
       <ul className="flex flex-col gap-1">
         {tripulacao.membros.map((membro) => (
-          <li key={membro.id} className="text-sm">
-            {membro.nome}
-            {membro.id === tripulacao.capitaoId && " · capitão"}
-            <span className="text-xs text-muted-foreground">
-              {" "}
-              — {membro.ejNome}, {rotuloDe(CARGOS, membro.cargo)}
+          <li key={membro.id} className="flex items-center gap-2 text-sm">
+            <Avatar nome={membro.nome} fotoChave={membro.fotoChave} className="size-7 text-xs" />
+            <span className="min-w-0">
+              {membro.nome}
+              {membro.id === tripulacao.capitaoId && " · capitão"}
+              <span className="text-xs text-muted-foreground">
+                {" "}
+                — {membro.ejNome}, {rotuloDe(CARGOS, membro.cargo)}
+              </span>
             </span>
           </li>
         ))}

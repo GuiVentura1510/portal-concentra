@@ -17,6 +17,7 @@ Todas as funções previstas para o evento estão em produção desde 11/10/2026
 - [x] Painel do staff: tripulações, missões, fila e pessoas
 - [x] Missões individuais e exclusão de missões sem respostas
 - [x] Ranking individual
+- [x] Foto de perfil
 - [ ] Visual do site com a identidade do evento
 - [ ] Ícones oficiais do PWA
 
@@ -31,6 +32,7 @@ Todas as funções previstas para o evento estão em produção desde 11/10/2026
 5. **Rankings.** Cada aprovação gera um lançamento de pontos. São dois rankings separados:
    - **Tripulações:** soma só as missões da tripulação.
    - **Individual:** soma só as missões individuais de cada pessoa. Os pontos individuais não entram no ranking das tripulações.
+6. **Foto de perfil.** Na aba Perfil, cada pessoa pode enviar, trocar ou remover a própria foto. Ela aparece para a tripulação, no ranking individual e no painel do staff. Quem não envia foto aparece com as iniciais do nome.
 
 As missões são conteúdo da organização: são criadas e editadas no painel, não no código.
 
@@ -72,7 +74,7 @@ O código do backend fica em `backend/src/main/java/br/org/concentro/portal/`, o
 | --- | --- |
 | `infra` | Segurança, JWT, CORS e endpoint de verificação |
 | `acesso` | Login, emissão do token e lista do staff (`EquipeStaff`) |
-| `cadastro` | EJs, congressistas, perfil e a aba Pessoas do staff |
+| `cadastro` | EJs, congressistas, perfil, foto de perfil e a aba Pessoas do staff |
 | `tripulacao` | Tripulações, algoritmo de montagem (`MontadorDeTripulacoes`), nomes e rotas |
 | `missao` | Missões, conclusões, lançamentos de pontos e ranking |
 
@@ -87,6 +89,7 @@ No frontend:
 | `src/lib/sessao.ts` | Guarda do token no aparelho |
 | `src/lib/opcoes.ts` | Códigos e textos de cargo, tempo de MEJ e área |
 | `src/lib/datas.ts` | Conversão entre UTC e o horário de Brasília |
+| `src/lib/foto.ts` | Redução da foto de perfil no celular antes do envio e endereço da imagem |
 
 ## Produção
 
@@ -162,12 +165,15 @@ docker compose exec db psql -U portal -d portal -c "delete from lancamento; dele
 | `GET /api/ejs` | EJs em ordem alfabética, para o formulário |
 | `POST /api/cadastro` | Cria a conta e devolve o token |
 | `POST /api/login` | Devolve o token |
+| `GET /api/fotos/{chave}` | Imagem de uma foto de perfil (JPEG), pela chave sorteada no envio |
 
 ### Com login
 
 | Método e rota | Descrição |
 | --- | --- |
-| `GET /api/perfil` | Dados da pessoa, incluindo se é do staff |
+| `GET /api/perfil` | Dados da pessoa, incluindo se é do staff e a chave da foto (`fotoChave`) |
+| `PUT /api/perfil/foto` | Envia ou troca a própria foto: `{"imagem": "<JPEG em base64>"}`. Devolve a chave nova |
+| `DELETE /api/perfil/foto` | Remove a própria foto |
 | `GET /api/tripulacao` | Tripulação da pessoa (404 antes da montagem) |
 | `GET /api/missoes` | Missões visíveis, com a situação da tripulação em cada uma |
 | `POST /api/missoes/{id}/resposta` | Envio da resposta de uma missão |
@@ -193,6 +199,7 @@ docker compose exec db psql -U portal -d portal -c "delete from lancamento; dele
 | `GET /api/staff/congressistas?busca=` | Busca por nome, e-mail ou EJ |
 | `POST /api/staff/congressistas/{id}/senha` | Gera uma senha temporária |
 | `DELETE /api/staff/congressistas/{id}` | Remove um cadastro sem histórico |
+| `DELETE /api/staff/congressistas/{id}/foto` | Remove a foto de perfil de alguém |
 | `POST /api/staff/congressistas/cruzamento` | Aponta cadastros fora da lista de inscritos |
 
 Uma rota nova só fica pública se for liberada em `SecurityConfig`. A rota `/error` precisa continuar liberada: sem ela, todo erro vira 403.
@@ -215,7 +222,7 @@ curl https://portal-concentra-api.onrender.com/api/ping
 | `/cadastro` | Cadastro, com login automático no fim |
 | `/login` | Login |
 | `/ranking` | Rankings das tripulações e individual, em abas, destacando a tripulação e a posição da pessoa |
-| `/perfil` | Perfil: dados do cadastro, tripulação, missões cumpridas e o botão de sair. Sem login, leva ao `/login` |
+| `/perfil` | Perfil: foto, dados do cadastro, tripulação, missões cumpridas e o botão de sair. Sem login, leva ao `/login` |
 
 Quem está logado vê, no rodapé de `/`, `/ranking` e `/perfil`, a barra de abas Início, Ranking e Perfil.
 
@@ -230,7 +237,7 @@ Um endereço desconhecido volta para `/` (inclusive o antigo `/staff`). Em produ
 | Tripulações | Resumo, botão de montar (confirmação em dois toques, some depois da montagem), busca, capitão, ponto de encontro e "Registrar missão cumprida" |
 | Missões | Cria, edita e exclui missões: título, descrição, pontos, vagas, início e fim no horário de Brasília, para quem (tripulação ou individual), forma de conclusão e visibilidade. Só exclui missão sem respostas; as outras saem do ar desmarcando "visível" |
 | Fila | Respostas enviadas pelas tripulações, com aprovar ou recusar |
-| Pessoas | Busca, registro de missão individual cumprida, senha temporária, remoção de cadastro e cruzamento com a lista de inscritos |
+| Pessoas | Busca, registro de missão individual cumprida, senha temporária, remoção de foto, remoção de cadastro e cruzamento com a lista de inscritos |
 
 O site pode ser instalado na tela inicial do celular pelo manifesto em `frontend/public/manifest.webmanifest`. Não há service worker, de propósito: assim o celular nunca serve uma versão antiga quando houver correção durante o evento. Os ícones atuais são provisórios; para trocar, substitua os três PNG em `frontend/public/`.
 
@@ -283,8 +290,9 @@ O banco é configurado para validação do schema (`ddl-auto: validate`), então
 | `V5__missoes.sql` | Tabela `missao` |
 | `V6__conclusoes_e_pontos.sql` | `missao.vagas_usadas`, tabelas `conclusao` e `lancamento` |
 | `V7__missoes_individuais.sql` | `missao.alcance` e a pessoa em `conclusao` e `lancamento` |
+| `V8__foto_de_perfil.sql` | Tabela `foto_perfil` e `congressista.foto_chave` |
 
-Nos logs da API, a linha `Current version of schema "public": 7` confirma que todas foram aplicadas.
+Nos logs da API, a linha `Current version of schema "public": 8` confirma que todas foram aplicadas.
 
 As classes anotadas com `@Entity` precisam bater com as tabelas: se houver diferença, o backend não inicia.
 
@@ -297,6 +305,7 @@ As classes anotadas com `@Entity` precisam bater com as tabelas: se houver difer
 - **Horários.** As janelas das missões são validadas no servidor. Os instantes são guardados em UTC e exibidos e digitados no horário de Brasília (UTC-3).
 - **Rankings.** Os dois ficam em cache em memória por 15 segundos (`app.ranking.cache`). Empates dividem a posição. Um lançamento com a pessoa preenchida é de missão individual e conta só no ranking individual.
 - **Tripulações.** A montagem e o encaixe de quem chega depois travam as tripulações (`select ... for update`), para que cadastros simultâneos não ocupem a mesma vaga. Uma EJ só se repete numa tripulação quando tem mais gente do que o número de tripulações.
+- **Fotos de perfil.** O site recorta e reduz a foto para 256 px, em JPEG, antes de enviar; a API só aceita JPEG de até 100 KB. A imagem fica no banco (o disco do Render não é permanente), na tabela `foto_perfil`, uma por pessoa. A leitura é pública, porque a tag `<img>` não envia o token; quem protege a foto é a chave sorteada a cada envio, que forma o endereço. Como uma foto nova ganha outra chave, o navegador guarda a imagem por um ano, e a API mantém em memória as fotos já lidas.
 - **Segurança.** A API responde com objetos próprios e nunca devolve senha nem hash. Senhas usam BCrypt, com no máximo 72 bytes.
 
 ## Operação do evento
@@ -306,6 +315,7 @@ As classes anotadas com `@Entity` precisam bater com as tabelas: se houver difer
 - **Missões:** a organização cria as missões no painel. Uma missão sem respostas pode ser excluída; com respostas, só escondida.
 - **Senha esquecida:** na aba Pessoas, "Nova senha" gera uma senha temporária para passar à pessoa.
 - **Remoção de cadastro:** só é possível para quem não enviou nem avaliou missão, não lançou pontos e não é capitão.
+- **Foto inadequada:** na aba Pessoas, "Remover foto" tira a foto de alguém. A pessoa pode enviar outra depois.
 - **Capitão:** depois de registrado, só ele envia as respostas das missões da tripulação. As individuais, cada um envia a sua.
 
 ## Testes
@@ -317,7 +327,7 @@ cd backend
 ./mvnw test
 ```
 
-São 58 testes, que sobem a aplicação inteira contra o banco local e, por isso, também aplicam as migrações pendentes. Os testes que gravam no banco usam `@Transactional` e são desfeitos no fim. Os relatórios ficam em `backend/target/surefire-reports/`.
+São 68 testes, que sobem a aplicação inteira contra o banco local e, por isso, também aplicam as migrações pendentes. Os testes que gravam no banco usam `@Transactional` e são desfeitos no fim. Os relatórios ficam em `backend/target/surefire-reports/`.
 
 O frontend não tem testes automatizados. A verificação dele é o lint e o build:
 

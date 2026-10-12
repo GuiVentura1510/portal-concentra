@@ -8,5 +8,6 @@ public record PessoaStaff(
     String ejNome,
     Cargo cargo,
     String tripulacaoNome,
-    boolean staff) {
+    boolean staff,
+    String fotoChave) {
 }
