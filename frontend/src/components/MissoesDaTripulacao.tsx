@@ -39,12 +39,24 @@ function cumprida(missao: Missao): boolean {
   return missao.minhaConclusao?.status === "APROVADA";
 }
 
-// Ordem dentro de cada lista: pela data de início, da mais cedo para a mais
-// tarde; missão sem início vai para o fim. Empate: pela data de fim.
+// Ordem dentro de cada lista, por grupo: abertas, em breve, cumpridas e, por
+// último, as encerradas ou esgotadas sem cumprir. Dentro do grupo, pela data de
+// início (a mais cedo primeiro; sem início vai para o fim); empate pela data de fim.
+function grupo(missao: Missao): number {
+  if (cumprida(missao)) return 2;
+  if (missao.situacao === "ABERTA") return 0;
+  if (missao.situacao === "EM_BREVE") return 1;
+  return 3;
+}
+
 function ordenar(missoes: Missao[]): Missao[] {
   const instante = (data: string | null) => (data ? Date.parse(data) : Number.POSITIVE_INFINITY);
+  const diferenca = (x: number, y: number) => (x === y ? 0 : x - y);
   return [...missoes].sort(
-    (a, b) => instante(a.inicio) - instante(b.inicio) || instante(a.fim) - instante(b.fim),
+    (a, b) =>
+      grupo(a) - grupo(b) ||
+      diferenca(instante(a.inicio), instante(b.inicio)) ||
+      diferenca(instante(a.fim), instante(b.fim)),
   );
 }
 
