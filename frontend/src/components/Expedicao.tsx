@@ -20,6 +20,7 @@ import estrelaPolar from "@/assets/ilustracoes/estrelas/estrela-polar.webp";
 
 // Números das regras, separados para facilitar a troca.
 const MISSOES_INDIVIDUAIS_POR_DIA = 8;
+const PREMIADAS_TRIPULACOES = 3;
 const PREMIADOS_NO_INDIVIDUAL = 10;
 
 const PILARES = [
@@ -67,7 +68,7 @@ const REGRAS: { titulo: string; texto: string; Icone: LucideIcon }[] = [
   {
     titulo: "Passaporte e adesivos",
     texto:
-      "O Passaporte do Navegador vem com o crachá. Cada missão cumprida rende um adesivo, e juntos eles formam a Estrela Polar no verso do crachá.",
+      "O Passaporte do Navegador é o bloco de notas que você recebe no início do evento. Cada missão cumprida rende um adesivo, e juntos eles formam a Estrela Polar no verso do crachá.",
     Icone: BookOpen,
   },
   {
@@ -77,7 +78,7 @@ const REGRAS: { titulo: string; texto: string; Icone: LucideIcon }[] = [
   },
   {
     titulo: "Prêmios",
-    texto: `Na Magna Final (domingo, 17h15), as tripulações que completarem todas as missões e somarem mais pontos ganham um mimo de um parceiro e reconhecimento no palco. Os ${PREMIADOS_NO_INDIVIDUAL} tripulantes com mais pontos no ranking individual ganham um brinde.`,
+    texto: `As ${PREMIADAS_TRIPULACOES} primeiras tripulações a completar todas as missões ganham um prêmio de reconhecimento na Magna Final (domingo, 17h15). Nas missões individuais, os ${PREMIADOS_NO_INDIVIDUAL} primeiros do ranking individual ganham um brinde.`,
     Icone: Gift,
   },
 ];
