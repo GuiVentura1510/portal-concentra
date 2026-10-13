@@ -60,7 +60,6 @@ export function MissoesDaTripulacao({ temTripulacao }: { temTripulacao: boolean 
 
   return (
     <section className="flex flex-col gap-3">
-      <p className="text-lg font-semibold">Missões</p>
       {!temTripulacao && (
         <p className="text-sm text-muted-foreground">
           As missões da tripulação abrem quando sua tripulação for revelada.

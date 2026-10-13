@@ -59,6 +59,13 @@ export default function BoasVindas() {
       >
         Criar conta de viajante
       </Link>
+
+      <Link
+        to="/expedicao"
+        className="mx-auto mt-3 rounded text-sm font-semibold text-creme/85 underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-ceu"
+      >
+        Conheça a expedição
+      </Link>
     </main>
   );
 }

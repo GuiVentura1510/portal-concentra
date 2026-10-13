@@ -4,8 +4,10 @@ import { ComAbas } from "@/components/Abas";
 import { useLogado } from "@/lib/sessao";
 import BoasVindas from "@/pages/BoasVindas";
 import Cadastro from "@/pages/Cadastro";
+import Expedicao from "@/pages/Expedicao";
 import Inicio from "@/pages/Inicio";
 import Login from "@/pages/Login";
+import Missoes from "@/pages/Missoes";
 import Perfil from "@/pages/Perfil";
 import Ranking from "@/pages/Ranking";
 
@@ -17,9 +19,11 @@ export default function App() {
         {/* Telas com a barra de abas embaixo (a barra só aparece com login). */}
         <Route element={<ComAbas />}>
           <Route path="/" element={<Entrada />} />
+          <Route path="/missoes" element={<Missoes />} />
           <Route path="/ranking" element={<Ranking />} />
           <Route path="/perfil" element={<Perfil />} />
         </Route>
+        <Route path="/expedicao" element={<Expedicao />} />
         <Route path="/cadastro" element={<Cadastro />} />
         <Route path="/login" element={<Login />} />
         {/* Endereço desconhecido volta ao início, para ninguém cair em
@@ -33,7 +37,7 @@ export default function App() {
 }
 
 // Endereço "/": quem não entrou vê a capa da expedição; quem entrou vê o
-// Início (tripulação e missões, ou o painel, no caso do staff). Ao sair da
+// Início (a página da expedição, ou o painel, no caso do staff). Ao sair da
 // conta, a troca é automática, porque useLogado avisa quando o token some.
 function Entrada() {
   return useLogado() ? <Inicio /> : <BoasVindas />;

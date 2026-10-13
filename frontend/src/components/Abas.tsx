@@ -1,10 +1,11 @@
-import { House, Trophy, User } from "lucide-react";
+import { House, ListChecks, Trophy, User } from "lucide-react";
 import { NavLink, Outlet } from "react-router";
 
 import { useLogado } from "@/lib/sessao";
 
 const ABAS = [
   { para: "/", rotulo: "Início", Icone: House },
+  { para: "/missoes", rotulo: "Missões", Icone: ListChecks },
   { para: "/ranking", rotulo: "Ranking", Icone: Trophy },
   { para: "/perfil", rotulo: "Perfil", Icone: User },
 ];
@@ -25,7 +26,7 @@ export function ComAbas() {
       <Outlet />
       {logado && (
         <nav aria-label="Seções do portal" className="fixed inset-x-0 bottom-0 z-10 border-t bg-background">
-          <ul className="mx-auto grid h-16 max-w-md grid-cols-3">
+          <ul className="mx-auto grid h-16 max-w-md grid-cols-4">
             {ABAS.map(({ para, rotulo, Icone }) => (
               <li key={para}>
                 <NavLink

@@ -1,31 +1,26 @@
+import { ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
+import { HistoriaDaExpedicao, PilaresDaExpedicao, RegrasDaExpedicao } from "@/components/Expedicao";
+import { Logo } from "@/components/Logo";
 import { MinhaTripulacao } from "@/components/MinhaTripulacao";
-import { MissoesDaTripulacao } from "@/components/MissoesDaTripulacao";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { api, ErroApi } from "@/lib/api";
+import { BOTAO_EXPEDICAO } from "@/lib/estilos";
 import type { Perfil } from "@/lib/perfil";
 import { lerToken } from "@/lib/sessao";
 import Staff from "@/pages/Staff";
 
-type Estado = "carregando" | "visitante" | "logado" | "falha";
+type Estado = "carregando" | "sem-login" | "logado" | "falha";
 
-// Início do portal. Quem não entrou vê as opções de cadastro e login; o
-// congressista vê a tripulação e as missões; a conta do staff vê o painel do
-// staff. Os dados do cadastro e o botão de sair ficam na aba Perfil, e o
-// ranking tem a própria aba.
+// Início de quem está logado (o visitante vê a capa, ver App.tsx).
+// - Congressista: a página da expedição, com a saudação, o quadro da
+//   tripulação, a história, os pilares e as regras. As missões têm aba própria.
+// - Staff: o próprio painel do staff.
 export default function Inicio() {
-  const [estado, setEstado] = useState<Estado>(() => (lerToken() ? "carregando" : "visitante"));
+  const [estado, setEstado] = useState<Estado>(() => (lerToken() ? "carregando" : "sem-login"));
   const [perfil, setPerfil] = useState<Perfil | null>(null);
-  const [temTripulacao, setTemTripulacao] = useState(false);
 
   useEffect(() => {
     if (!lerToken()) return;
@@ -35,57 +30,57 @@ export default function Inicio() {
         setEstado("logado");
       })
       .catch((e) => {
-        // 401: o token venceu e já foi apagado; a pessoa entra de novo.
-        setEstado(e instanceof ErroApi && e.status === 401 ? "visitante" : "falha");
+        // 401: o token venceu e já foi apagado; o App troca o Início pela capa.
+        setEstado(e instanceof ErroApi && e.status === 401 ? "sem-login" : "falha");
       });
   }, []);
 
   // Conta do staff: o início já é o painel. O staff não entra em tripulação
-  // nem cumpre missões, então a tela do congressista não teria o que mostrar.
+  // nem cumpre missões, então a página do congressista não teria o que mostrar.
   if (estado === "logado" && perfil?.staff) return <Staff />;
+  if (estado === "sem-login") return null;
 
   return (
-    <main className="flex min-h-svh items-start justify-center p-4 sm:items-center">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle>A Expedição da Estrela Polar</CardTitle>
-          <CardDescription>Concentra DF 2026 · 17 e 18 de outubro</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {estado === "carregando" && <p className="text-sm">Carregando...</p>}
+    <main className="mx-auto flex w-full max-w-md flex-col gap-8 px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-8">
+      <header className="flex flex-col gap-5">
+        <Logo />
+        <h1 className="text-center leading-none">
+          <span className="block text-2xl font-extrabold text-creme">
+            {perfil ? `Olá, ${perfil.nome.split(" ")[0]}!` : "Olá, viajante!"}
+          </span>
+          <span className="mt-2 block text-base font-semibold text-creme/80">
+            Bem-vindo à Expedição da Estrela Polar
+          </span>
+        </h1>
+      </header>
 
-          {estado === "visitante" && (
-            <>
-              <p className="text-sm">
-                Cadastre-se para entrar na sua tripulação e participar das missões do evento.
-              </p>
-              <Button asChild className="h-10 w-full">
-                <Link to="/cadastro">Fazer cadastro</Link>
-              </Button>
-              <Button asChild variant="outline" className="h-10 w-full">
-                <Link to="/login">Já tenho conta</Link>
-              </Button>
-            </>
-          )}
+      {estado === "carregando" && <p className="text-center text-sm text-muted-foreground">Carregando...</p>}
 
-          {estado === "logado" && perfil && (
-            <>
-              <p className="text-center text-lg font-medium">Olá, {perfil.nome.split(" ")[0]}!</p>
-              <MinhaTripulacao meuId={perfil.id} minhaFotoChave={perfil.fotoChave} aoCarregar={setTemTripulacao} />
-              <MissoesDaTripulacao temTripulacao={temTripulacao} />
-            </>
-          )}
+      {estado === "falha" && (
+        <div className="flex flex-col gap-3 text-center">
+          <p className="text-sm">Não foi possível carregar seus dados.</p>
+          <Button className="h-10 w-full" onClick={() => window.location.reload()}>
+            Tentar de novo
+          </Button>
+        </div>
+      )}
 
-          {estado === "falha" && (
-            <>
-              <p className="text-sm">Não foi possível carregar seus dados.</p>
-              <Button className="h-10 w-full" onClick={() => window.location.reload()}>
-                Tentar de novo
-              </Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
+      {estado === "logado" && perfil && (
+        <>
+          {/* Cartão branco: o quadro da tripulação usa as cores de superfície clara. */}
+          <div data-slot="card" className="flex flex-col gap-4 rounded-[2rem] bg-white p-4 text-[#1d2252]">
+            <MinhaTripulacao meuId={perfil.id} minhaFotoChave={perfil.fotoChave} />
+            <Link to="/missoes" className={`flex h-12 items-center justify-center gap-2 ${BOTAO_EXPEDICAO}`}>
+              Ver as missões
+              <ArrowRight className="size-5" aria-hidden="true" />
+            </Link>
+          </div>
+
+          <HistoriaDaExpedicao />
+          <PilaresDaExpedicao />
+          <RegrasDaExpedicao />
+        </>
+      )}
     </main>
   );
 }
