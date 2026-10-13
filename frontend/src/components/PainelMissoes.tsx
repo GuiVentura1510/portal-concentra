@@ -1,3 +1,4 @@
+import { Search, User, Users, X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { Campo } from "@/components/Campo";
@@ -46,6 +47,19 @@ const ALCANCES: { valor: AlcanceMissao; rotulo: string }[] = [
   { valor: "INDIVIDUAL", rotulo: "Individual: cada um cumpre a sua; conta no ranking individual" },
 ];
 
+// Texto sem acento e em minúsculas, para a busca achar "bussola" em "Bússola".
+function semAcento(texto: string): string {
+  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+// Ordem da lista: pela data de início (a mais cedo primeiro; sem início vai
+// para o fim), empate pela data de fim.
+function porData(a: Missao, b: Missao): number {
+  const instante = (data: string | null) => (data ? Date.parse(data) : Number.POSITIVE_INFINITY);
+  const diferenca = (x: number, y: number) => (x === y ? 0 : x - y);
+  return diferenca(instante(a.inicio), instante(b.inicio)) || diferenca(instante(a.fim), instante(b.fim));
+}
+
 // Missão sendo editada: "nova", uma existente, ou nenhuma (só a lista).
 type Edicao = { tipo: "nova" } | { tipo: "existente"; missao: Missao } | null;
 
@@ -55,6 +69,9 @@ export function PainelMissoes({ aoMudar }: { aoMudar: () => void }) {
   const [missoes, setMissoes] = useState<Missao[] | null>(null);
   const [falha, setFalha] = useState(false);
   const [edicao, setEdicao] = useState<Edicao>(null);
+  // Busca e lista escolhida ficam guardadas ao abrir e fechar o formulário.
+  const [busca, setBusca] = useState("");
+  const [aba, setAba] = useState<AlcanceMissao>("TRIPULACAO");
 
   useEffect(() => {
     api<Missao[]>("/api/staff/missoes", { autenticado: true }).then(setMissoes, () => setFalha(true));
@@ -89,13 +106,83 @@ export function PainelMissoes({ aoMudar }: { aoMudar: () => void }) {
     );
   }
 
+  // A busca olha o título e a descrição; os números dos botões contam o que a
+  // busca achou em cada lista, para o staff ver se a missão está na outra.
+  const termo = semAcento(busca.trim());
+  const achadas = missoes
+    .filter((m) => termo === "" || semAcento(`${m.titulo} ${m.descricao}`).includes(termo))
+    .sort(porData);
+  const listas: Record<AlcanceMissao, Missao[]> = {
+    TRIPULACAO: achadas.filter((m) => m.alcance === "TRIPULACAO"),
+    INDIVIDUAL: achadas.filter((m) => m.alcance === "INDIVIDUAL"),
+  };
+  const lista = listas[aba];
+
   return (
     <div className="flex flex-col gap-3">
       <Button className="h-10" onClick={() => setEdicao({ tipo: "nova" })}>
         Nova missão
       </Button>
-      {missoes.length === 0 && <p className="text-sm">Nenhuma missão cadastrada ainda.</p>}
-      {missoes.map((missao) => (
+      {missoes.length === 0 ? (
+        <p className="text-sm">Nenhuma missão cadastrada ainda.</p>
+      ) : (
+        <>
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              type="search"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar missão"
+              aria-label="Buscar missão pelo título ou pela descrição"
+              className="h-10 pr-10 pl-9 [&::-webkit-search-cancel-button]:hidden"
+            />
+            {busca && (
+              <button
+                type="button"
+                onClick={() => setBusca("")}
+                aria-label="Limpar a busca"
+                className="absolute top-1/2 right-1 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground"
+              >
+                <X className="size-4" aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-2" role="group" aria-label="Tipo de missão">
+            <Button
+              variant={aba === "TRIPULACAO" ? "default" : "outline"}
+              className="h-11"
+              aria-pressed={aba === "TRIPULACAO"}
+              onClick={() => setAba("TRIPULACAO")}
+            >
+              <Users className="size-4" aria-hidden="true" />
+              Tripulação · {listas.TRIPULACAO.length}
+            </Button>
+            <Button
+              variant={aba === "INDIVIDUAL" ? "default" : "outline"}
+              className="h-11"
+              aria-pressed={aba === "INDIVIDUAL"}
+              onClick={() => setAba("INDIVIDUAL")}
+            >
+              <User className="size-4" aria-hidden="true" />
+              Individuais · {listas.INDIVIDUAL.length}
+            </Button>
+          </div>
+          {lista.length === 0 && (
+            <p className="text-center text-sm">
+              {termo
+                ? "Nenhuma missão encontrada nesta lista."
+                : aba === "TRIPULACAO"
+                  ? "Nenhuma missão da tripulação cadastrada."
+                  : "Nenhuma missão individual cadastrada."}
+            </p>
+          )}
+        </>
+      )}
+      {lista.map((missao) => (
         <CartaoMissaoStaff
           key={missao.id}
           missao={missao}
