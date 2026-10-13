@@ -1,3 +1,4 @@
+import { User, Users } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { FotoDoEnvio } from "@/components/FotoDoEnvio";
@@ -39,11 +40,35 @@ const SITUACOES: Record<Situacao, string> = {
   ESGOTADA: "Vagas esgotadas",
 };
 
-// Missões visíveis para quem está logado, com o envio da resposta. As da tripulação
-// são enviadas pelo capitão; as individuais, por cada pessoa.
+type Aba = "TRIPULACAO" | "INDIVIDUAL";
+
+// Ordem dentro de cada lista: abertas, em breve, esgotadas, encerradas e, por
+// último, as já cumpridas (envio aceito).
+const ORDEM: Record<Situacao, number> = { ABERTA: 0, EM_BREVE: 1, ESGOTADA: 2, ENCERRADA: 3 };
+
+function cumprida(missao: Missao): boolean {
+  return missao.minhaConclusao?.status === "APROVADA";
+}
+
+function ordenar(missoes: Missao[]): Missao[] {
+  const peso = (m: Missao) => (cumprida(m) ? 4 : ORDEM[m.situacao]);
+  // sort é estável: dentro do mesmo peso, fica a ordem que a API mandou.
+  return [...missoes].sort((a, b) => peso(a) - peso(b));
+}
+
+const NOTAS: Record<Aba, string> = {
+  TRIPULACAO: "Valem pontos para a tripulação. O capitão envia a resposta.",
+  INDIVIDUAL: "Valem pontos só para você, no ranking individual.",
+};
+
+// Missões visíveis para quem está logado, com o envio da resposta, em duas
+// listas alternadas por botões (como no Ranking): as da tripulação, enviadas
+// pelo capitão, e as individuais, enviadas por cada pessoa.
 export function MissoesDaTripulacao({ temTripulacao }: { temTripulacao: boolean }) {
   const [missoes, setMissoes] = useState<Missao[] | null>(null);
   const [falha, setFalha] = useState(false);
+  // Antes da montagem não há missão da tripulação para cumprir: abre nas individuais.
+  const [aba, setAba] = useState<Aba>(temTripulacao ? "TRIPULACAO" : "INDIVIDUAL");
 
   const carregar = useCallback(
     () => api<Missao[]>("/api/missoes", { autenticado: true }).then(setMissoes, () => setFalha(true)),
@@ -58,14 +83,47 @@ export function MissoesDaTripulacao({ temTripulacao }: { temTripulacao: boolean 
   if (missoes === null) return <p className="text-center text-sm text-muted-foreground">Carregando missões...</p>;
   if (missoes.length === 0) return <p className="text-center text-sm">As missões aparecem aqui durante o evento.</p>;
 
+  const listas: Record<Aba, Missao[]> = {
+    TRIPULACAO: ordenar(missoes.filter((m) => m.alcance === "TRIPULACAO")),
+    INDIVIDUAL: ordenar(missoes.filter((m) => m.alcance === "INDIVIDUAL")),
+  };
+  const lista = listas[aba];
+  const placar = (l: Missao[]) => `${l.filter(cumprida).length}/${l.length}`;
+
   return (
     <section className="flex flex-col gap-3">
-      {!temTripulacao && (
+      <div className="grid grid-cols-2 gap-2" role="group" aria-label="Tipo de missão">
+        <Button
+          variant={aba === "TRIPULACAO" ? "default" : "outline"}
+          className="h-11"
+          aria-pressed={aba === "TRIPULACAO"}
+          onClick={() => setAba("TRIPULACAO")}
+        >
+          <Users className="size-4" aria-hidden="true" />
+          Tripulação · {placar(listas.TRIPULACAO)}
+        </Button>
+        <Button
+          variant={aba === "INDIVIDUAL" ? "default" : "outline"}
+          className="h-11"
+          aria-pressed={aba === "INDIVIDUAL"}
+          onClick={() => setAba("INDIVIDUAL")}
+        >
+          <User className="size-4" aria-hidden="true" />
+          Individuais · {placar(listas.INDIVIDUAL)}
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">{NOTAS[aba]}</p>
+      {aba === "TRIPULACAO" && !temTripulacao && (
         <p className="text-sm text-muted-foreground">
           As missões da tripulação abrem quando sua tripulação for revelada.
         </p>
       )}
-      {missoes.map((missao) => (
+      {lista.length === 0 && (
+        <p className="text-center text-sm">
+          {aba === "TRIPULACAO" ? "Nenhuma missão da tripulação por enquanto." : "Nenhuma missão individual por enquanto."}
+        </p>
+      )}
+      {lista.map((missao) => (
         <CartaoMissao key={missao.id} missao={missao} temTripulacao={temTripulacao} aoEnviar={carregar} />
       ))}
     </section>
