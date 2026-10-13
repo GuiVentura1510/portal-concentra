@@ -9,7 +9,7 @@ import { BOTAO_EXPEDICAO } from "@/lib/estilos";
 // para mudar, é só trocar aqui.
 const NUMEROS = [
   { valor: 983, rotulo: "Tripulantes" },
-  { valor: 3, rotulo: "Missões" },
+  { valor: 8, rotulo: "Missões/dia" },
   { valor: 1, rotulo: "Magna final" },
 ];
 

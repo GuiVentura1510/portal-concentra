@@ -33,28 +33,49 @@ type Missao = {
   possoEnviar: boolean;
 };
 
-const SITUACOES: Record<Situacao, string> = {
-  EM_BREVE: "Em breve",
-  ABERTA: "Aberta",
-  ENCERRADA: "Encerrada",
-  ESGOTADA: "Vagas esgotadas",
-};
-
 type Aba = "TRIPULACAO" | "INDIVIDUAL";
-
-// Ordem dentro de cada lista: abertas, em breve, esgotadas, encerradas e, por
-// último, as já cumpridas (envio aceito).
-const ORDEM: Record<Situacao, number> = { ABERTA: 0, EM_BREVE: 1, ESGOTADA: 2, ENCERRADA: 3 };
 
 function cumprida(missao: Missao): boolean {
   return missao.minhaConclusao?.status === "APROVADA";
 }
 
+// Ordem dentro de cada lista: pela data de início, da mais cedo para a mais
+// tarde; missão sem início vai para o fim. Empate: pela data de fim.
 function ordenar(missoes: Missao[]): Missao[] {
-  const peso = (m: Missao) => (cumprida(m) ? 4 : ORDEM[m.situacao]);
-  // sort é estável: dentro do mesmo peso, fica a ordem que a API mandou.
-  return [...missoes].sort((a, b) => peso(a) - peso(b));
+  const instante = (data: string | null) => (data ? Date.parse(data) : Number.POSITIVE_INFINITY);
+  return [...missoes].sort(
+    (a, b) => instante(a.inicio) - instante(b.inicio) || instante(a.fim) - instante(b.fim),
+  );
 }
+
+// Aparência de cada cartão: uma cor da identidade visual do Concentra 26 por
+// etapa (cores definidas no index.css), usada no fundo, na borda, na sombra e
+// no selo. O fundo colorido e a borda grossa separam bem um cartão do outro
+// dentro do cartão branco da aba; o selo repete a etapa em texto.
+type Estado = "CUMPRIDA" | Situacao;
+const ESTILO_CARTAO: Record<Estado, string> = {
+  ABERTA: "border-ceu bg-ceu/25 shadow-[3px_3px_0_var(--color-ceu)]",
+  EM_BREVE: "border-lilas bg-lilas/25 shadow-[3px_3px_0_var(--color-lilas)]",
+  CUMPRIDA: "border-rosa bg-rosa/20 shadow-[3px_3px_0_var(--color-rosa)]",
+  // O creme puro some sobre o branco: a borda e a sombra usam um tom mais escuro dele.
+  ESGOTADA: "border-[#e2d6b0] bg-creme shadow-[3px_3px_0_#e2d6b0]",
+  ENCERRADA: "border-[#e2d6b0] bg-creme shadow-[3px_3px_0_#e2d6b0]",
+};
+// Texto azul-noite em todos os selos (contraste acima de 9:1).
+const ESTILO_SELO: Record<Estado, string> = {
+  ABERTA: "bg-ceu text-noite",
+  EM_BREVE: "bg-lilas text-noite",
+  CUMPRIDA: "bg-rosa text-noite",
+  ESGOTADA: "bg-[#e2d6b0] text-noite",
+  ENCERRADA: "bg-[#e2d6b0] text-noite",
+};
+const ROTULO_SELO: Record<Estado, string> = {
+  ABERTA: "Aberta",
+  CUMPRIDA: "Cumprida",
+  EM_BREVE: "Em breve",
+  ESGOTADA: "Vagas esgotadas",
+  ENCERRADA: "Encerrada",
+};
 
 const NOTAS: Record<Aba, string> = {
   TRIPULACAO: "Valem pontos para a tripulação. O capitão envia a resposta.",
@@ -91,7 +112,7 @@ export function MissoesDaTripulacao({ temTripulacao }: { temTripulacao: boolean 
   const placar = (l: Missao[]) => `${l.filter(cumprida).length}/${l.length}`;
 
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-2" role="group" aria-label="Tipo de missão">
         <Button
           variant={aba === "TRIPULACAO" ? "default" : "outline"}
@@ -187,14 +208,19 @@ function CartaoMissao({
     }
   }
 
+  const estado: Estado = minha?.status === "APROVADA" ? "CUMPRIDA" : missao.situacao;
+
   return (
-    <article className="flex flex-col gap-2 rounded-lg border p-3">
+    <article className={`flex flex-col gap-2 rounded-2xl border-2 p-4 ${ESTILO_CARTAO[estado]}`}>
       <div className="flex items-start justify-between gap-2">
-        <p className="font-semibold">{missao.titulo}</p>
-        <span className="shrink-0 text-sm font-medium">{missao.pontos} pts</span>
+        <p className="font-bold">{missao.titulo}</p>
+        <span className="shrink-0 text-sm font-semibold">{missao.pontos} pts</span>
       </div>
+      <span className={`w-fit rounded-full px-2.5 py-0.5 text-xs font-bold ${ESTILO_SELO[estado]}`}>
+        {ROTULO_SELO[estado]}
+      </span>
       <p className="text-xs text-muted-foreground">
-        {individual ? "Individual" : "Da tripulação"} · {SITUACOES[missao.situacao]} · {textoJanela(missao.inicio, missao.fim)}
+        {individual ? "Individual" : "Da tripulação"} · {textoJanela(missao.inicio, missao.fim)}
         {missao.vagasRestantes !== null && ` · ${missao.vagasRestantes} de ${missao.vagas} vagas restantes`}
       </p>
       {missao.descricao && <p className="text-sm whitespace-pre-line">{missao.descricao}</p>}
@@ -227,7 +253,7 @@ function CartaoMissao({
             maxLength={4000}
             rows={4}
             onChange={(e) => setTexto(e.target.value)}
-            className="w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="w-full rounded-lg border border-input bg-white px-2.5 py-2 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           />
           {aceitaFoto && (
             <div className="flex flex-col gap-2">
@@ -241,7 +267,7 @@ function CartaoMissao({
                   className="max-h-48 w-fit max-w-full rounded-lg border object-contain"
                 />
               )}
-              <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-lg border px-3 text-sm font-medium">
+              <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-lg border bg-white px-3 text-sm font-medium">
                 {preparandoFoto ? "Preparando a foto..." : foto ? "Trocar foto" : "Tirar ou escolher foto"}
                 <input
                   type="file"
