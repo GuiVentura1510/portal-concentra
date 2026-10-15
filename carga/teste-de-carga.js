@@ -20,7 +20,9 @@
 // para não martelar um servidor que já caiu.
 //
 // Variáveis: API_URL, EMAIL_STAFF, SENHA_STAFF (conta do staff em STAFF_EMAILS).
-// Opcionais: MODO=fumaca (1,5 min, 10 contas, sem montagem) | completo (padrão);
+// Opcionais: MODO=fumaca (1,5 min, 10 contas, sem montagem) | completo (padrão) |
+//            jogo (~14 min, depois de uma montagem já feita: revelação, jogo, staff,
+//            logins e estresse, com contas que já entraram, como no evento);
 //            PESSOAS=500 (quantas contas de carga).
 
 import http from "k6/http";
@@ -90,8 +92,36 @@ const FUMACA = {
   staff: { executor: "constant-vus", exec: "conferir", vus: 1, duration: "40s", startTime: "50s", tags: { fase: "staff" } },
 };
 
+// Depois da montagem. As pessoas já estão logadas (o login vale 10 dias), então as
+// fases usam tokens obtidos no começo; os logins são medidos à parte, num ritmo fixo.
+const JOGO = {
+  revelacao: {
+    executor: "constant-arrival-rate", exec: "revelar", rate: 40, timeUnit: "1s",
+    duration: "1m", preAllocatedVUs: 100, maxVUs: 400, tags: { fase: "revelacao" },
+  },
+  jogo: {
+    executor: "ramping-vus", exec: "jogar", startTime: "1m10s", startVUs: 0,
+    stages: [{ duration: "3m", target: 300 }, { duration: "4m", target: 300 }, { duration: "1m", target: 0 }],
+    gracefulRampDown: "10s", tags: { fase: "jogo" },
+  },
+  staff: {
+    executor: "constant-vus", exec: "conferir", vus: 5, duration: "8m", startTime: "1m10s",
+    tags: { fase: "staff" },
+  },
+  // Gente entrando ao longo do evento: 1 login por segundo durante 3 minutos.
+  logins: {
+    executor: "constant-arrival-rate", exec: "logar", rate: 1, timeUnit: "1s",
+    duration: "3m", startTime: "3m", preAllocatedVUs: 5, maxVUs: 30, tags: { fase: "logins" },
+  },
+  estresse: {
+    executor: "ramping-vus", exec: "estressar", startTime: "9m20s", startVUs: 300,
+    stages: [{ duration: "2m", target: 500 }, { duration: "2m", target: 500 }, { duration: "30s", target: 0 }],
+    gracefulRampDown: "5s", tags: { fase: "estresse" },
+  },
+};
+
 export const options = {
-  scenarios: MODO === "fumaca" ? FUMACA : COMPLETO,
+  scenarios: MODO === "fumaca" ? FUMACA : MODO === "jogo" ? JOGO : COMPLETO,
   setupTimeout: "2m",
   teardownTimeout: "2m",
   thresholds: {
@@ -136,10 +166,15 @@ const sorteio = (lista) => lista[Math.floor(Math.random() * lista.length)];
 // Cada pessoa virtual usa uma conta de carga fixa e guarda o token entre as rodadas.
 let meuToken = null;
 const jaEnviei = {};
+let falhasMostradas = 0;
 function minhaConta() {
   return ((exec.vu.idInTest - 1) % PESSOAS) + 1;
 }
-function token() {
+function token(dados) {
+  // Modo jogo: tokens obtidos no começo (como quem já entrou no portal antes).
+  if (dados && dados.tokens && dados.tokens.length > 0) {
+    return dados.tokens[(exec.vu.idInTest - 1) % dados.tokens.length];
+  }
   if (!meuToken) meuToken = entrarComo(emailDe(minhaConta()), SENHA_CARGA);
   return meuToken;
 }
@@ -163,7 +198,10 @@ export function setup() {
 
   const resumo = json("GET", "/api/staff/tripulacoes/resumo", null, staff, "preparo", "resumo");
   if (resumo.status === 403) throw new Error("A conta não é do staff (ou precisa sair e entrar de novo).");
-  if (MODO !== "fumaca" && resumo.json("tripulacoes") > 0) {
+  if (MODO === "jogo" && resumo.json("tripulacoes") === 0) {
+    throw new Error("O modo jogo precisa de uma montagem já feita (rode o modo completo antes).");
+  }
+  if (MODO === "completo" && resumo.json("tripulacoes") > 0) {
     throw new Error("Já existem tripulações: a montagem já foi feita. Rode o carga/limpeza.sql antes.");
   }
 
@@ -179,7 +217,23 @@ export function setup() {
     missao(staff, { ...base, titulo: "[CARGA] Tripulação com 30 vagas", alcance: "TRIPULACAO", comprovacao: "TEXTO", vagas: 30 }),
   ];
   console.log(`Missões de carga: ${missoes.map((m) => m.id).join(", ")} (máximo de fotos aceito pela API: ${missoes[0].maxFotos})`);
-  return { staff, ejs, missoes };
+
+  // Modo jogo: entra com 100 contas de carga, de 5 em 5, antes de começar.
+  const tokens = [];
+  if (MODO === "jogo") {
+    const total = Math.min(100, PESSOAS);
+    for (let i = 1; i <= total; i += 5) {
+      const lote = [];
+      for (let k = i; k < i + 5 && k <= total; k++) {
+        lote.push(["POST", `${API}/api/login`, JSON.stringify({ email: emailDe(k), senha: SENHA_CARGA }),
+          { headers: { "Content-Type": "application/json" }, tags: { tipo: "preparo", nome: "login-previo" }, timeout: "60s" }]);
+      }
+      for (const r of http.batch(lote)) if (r.status === 200) tokens.push(r.json("token"));
+    }
+    console.log(`Logins prévios: ${tokens.length} de ${total}`);
+    if (tokens.length === 0) throw new Error("Nenhuma conta de carga conseguiu entrar.");
+  }
+  return { staff, ejs, missoes, tokens };
 }
 
 // ---------- fases ----------
@@ -207,8 +261,8 @@ function telas(t) {
   else ler("/api/ranking/individual", t, "ranking-individual");
 }
 
-export function navegar() {
-  const t = token();
+export function navegar(dados) {
+  const t = token(dados);
   if (!t) { sleep(5); return; }
   telas(t);
   sleep(3 + Math.random() * 5);
@@ -223,8 +277,8 @@ export function montar(dados) {
 }
 
 // Meio-dia de sábado: todo mundo abre o portal para ver a tripulação.
-export function revelar() {
-  const t = token();
+export function revelar(dados) {
+  const t = token(dados);
   if (!t) return;
   ler("/api/tripulacao", t, "tripulacao");
   ler("/api/perfil", t, "perfil");
@@ -244,11 +298,15 @@ function enviar(t, m) {
   check(r, { "envio 201 ou 409": (x) => x.status === 201 || x.status === 409 });
   if (r.status === 201) enviosAceitos.add(1);
   if (r.status === 409) enviosRecusados409.add(1);
+  // Mostra o motivo das falhas (no máximo 10 por pessoa virtual), para entender o erro.
+  if (r.status !== 201 && r.status !== 409 && falhasMostradas++ < 10) {
+    console.warn(`Envio recusado na missão "${m.corpo.titulo}": ${r.status} ${r.body}`);
+  }
 }
 
 // Durante o evento: navega e, de vez em quando, cumpre uma missão de carga.
 export function jogar(dados) {
-  const t = token();
+  const t = token(dados);
   if (!t) { sleep(5); return; }
   telas(t);
   if (Math.random() < 0.2) {
@@ -285,11 +343,16 @@ export function conferir(dados) {
 }
 
 // Além do esperado: mais gente e atualizando mais rápido, para achar o limite.
-export function estressar() {
-  const t = token();
+export function estressar(dados) {
+  const t = token(dados);
   if (!t) { sleep(2); return; }
   telas(t);
   sleep(1 + Math.random() * 2);
+}
+
+// Um login de uma conta de carga qualquer (mede o custo do login sob carga).
+export function logar() {
+  entrarComo(emailDe(1 + Math.floor(Math.random() * PESSOAS)), SENHA_CARGA);
 }
 
 // No fim, esconde as missões de carga (a limpeza.sql apaga de vez).
