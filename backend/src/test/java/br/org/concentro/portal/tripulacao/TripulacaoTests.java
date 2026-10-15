@@ -137,7 +137,8 @@ class TripulacaoTests {
         mvc.perform(get("/api/tripulacao").header("Authorization", token("pessoa0.teste@exemplo.com")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.nome").isNotEmpty())
-            .andExpect(jsonPath("$.membros[*].nome", hasItem("Pessoa 0")));
+            .andExpect(jsonPath("$.membros[*].nome", hasItem("Pessoa 0")))
+            .andExpect(jsonPath("$.membros[0].tempoMej").isNotEmpty());
 
         // O staff não entra em tripulação.
         mvc.perform(get("/api/tripulacao").header("Authorization", token("staff.teste@exemplo.com")))

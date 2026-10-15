@@ -10,6 +10,7 @@ import Login from "@/pages/Login";
 import Missoes from "@/pages/Missoes";
 import Perfil from "@/pages/Perfil";
 import Ranking from "@/pages/Ranking";
+import Tripulacao from "@/pages/Tripulacao";
 
 // Mapa de rotas do portal: cada endereço aponta para uma tela.
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
         <Route element={<ComAbas />}>
           <Route path="/" element={<Entrada />} />
           <Route path="/missoes" element={<Missoes />} />
+          <Route path="/tripulacao" element={<Tripulacao />} />
           <Route path="/ranking" element={<Ranking />} />
           <Route path="/perfil" element={<Perfil />} />
         </Route>

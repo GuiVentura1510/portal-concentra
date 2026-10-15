@@ -149,7 +149,7 @@ public class TripulacaoService {
     private TripulacaoResposta resposta(Tripulacao tripulacao) {
         List<TripulacaoResposta.Membro> membros = congressistas.membrosDa(tripulacao.getId()).stream()
             .map(m -> new TripulacaoResposta.Membro(m.getId(), m.getNome(), m.getEj().getNome(), m.getCargo(),
-                m.getFotoChave()))
+                m.getTempoMej(), m.getFotoChave()))
             .toList();
         Long capitaoId = tripulacao.getCapitao() == null ? null : tripulacao.getCapitao().getId();
         return new TripulacaoResposta(tripulacao.getId(), tripulacao.getNome(), tripulacao.getPontoEncontro(),
