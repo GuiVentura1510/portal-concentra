@@ -1,6 +1,7 @@
 package br.org.concentro.portal.missao;
 
 import java.time.Instant;
+import java.util.List;
 
 // Uma conclusão como o staff vê na fila. Nas missões individuais vem a pessoa;
 // a tripulação pode vir vazia se a pessoa ainda não tiver uma.
@@ -18,7 +19,9 @@ public record ConclusaoResposta(
     String enviadaPor,
     Instant enviadaEm,
     String motivoRecusa,
-    String fotoChave) {
+    // A primeira foto (para o site antigo) e todas as fotos do envio (V11).
+    String fotoChave,
+    List<String> fotoChaves) {
 
     static ConclusaoResposta de(Conclusao c) {
         String autor = c.getEnviadaPor() == null ? null : c.getEnviadaPor().getNome();
@@ -28,6 +31,7 @@ public record ConclusaoResposta(
         String pessoaNome = c.getCongressista() == null ? null : c.getCongressista().getNome();
         return new ConclusaoResposta(c.getId(), c.getMissao().getId(), c.getMissao().getTitulo(),
             c.getMissao().getAlcance(), tripulacaoId, tripulacaoNome, pessoaId, pessoaNome, c.getStatus(),
-            c.getResposta(), autor, c.getEnviadaEm(), c.getMotivoRecusa(), c.getFotoChave());
+            c.getResposta(), autor, c.getEnviadaEm(), c.getMotivoRecusa(), c.getFotoChave(),
+            c.getFotoChaves());
     }
 }

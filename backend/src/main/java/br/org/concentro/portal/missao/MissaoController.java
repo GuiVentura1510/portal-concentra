@@ -39,7 +39,8 @@ public class MissaoController {
     @ResponseStatus(HttpStatus.CREATED)
     public MinhaConclusao responder(@PathVariable Long id, @AuthenticationPrincipal Jwt token,
             @Valid @RequestBody RespostaRequisicao requisicao) {
-        return conclusoes.enviar(id, Long.valueOf(token.getSubject()), requisicao.texto(), requisicao.foto());
+        return conclusoes.enviar(id, Long.valueOf(token.getSubject()), requisicao.texto(),
+            requisicao.todasAsFotos());
     }
 
     // Foto de um envio. Pública como a foto de perfil (a tag <img> não envia o

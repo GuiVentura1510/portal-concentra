@@ -85,17 +85,18 @@ public class ConclusaoService {
                 && situacao == SituacaoMissao.ABERTA && !ativa;
             Integer restantes = m.getVagas() == null ? null : Math.max(0, m.getVagas() - m.getVagasUsadas());
             MinhaConclusao minha = c == null ? null
-                : new MinhaConclusao(c.getStatus(), c.getResposta(), c.getMotivoRecusa(), c.getFotoChave());
+                : new MinhaConclusao(c.getStatus(), c.getResposta(), c.getMotivoRecusa(), c.getFotoChave(),
+                    c.getFotoChaves());
             return new MissaoDaTripulacao(m.getId(), m.getTitulo(), m.getDescricao(), m.getPontos(), m.getVagas(),
                 restantes, m.getInicio(), m.getFim(), m.getConclusao(), m.getAlcance(), m.getComprovacao(),
-                situacao, minha, possoEnviar);
+                m.getMaxFotos(), situacao, minha, possoEnviar);
         }).toList();
     }
 
     // Envio de uma resposta. Aceito na hora (decidido em 12/10): ocupa a vaga e lança
     // os pontos. O staff pode retirar o envio depois, na aba Envios.
     @Transactional
-    public MinhaConclusao enviar(Long missaoId, Long congressistaId, String texto, String foto) {
+    public MinhaConclusao enviar(Long missaoId, Long congressistaId, String texto, List<String> fotos) {
         Congressista eu = buscarCongressista(congressistaId);
         if (equipe.ehStaff(eu.getEmail())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Contas do staff não participam das missões.");
@@ -115,9 +116,16 @@ public class ConclusaoService {
             }
         }
         String limpo = texto == null ? "" : texto.trim();
-        boolean temFoto = foto != null && !foto.isBlank();
+        boolean temFoto = !fotos.isEmpty();
         conferirComprovacao(missao.getComprovacao(), !limpo.isEmpty(), temFoto);
-        byte[] imagem = temFoto ? Jpeg.decodificar(foto, LIMITE_FOTO_BYTES, "Foto grande demais.") : null;
+        if (fotos.size() > missao.getMaxFotos()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, missao.getMaxFotos() == 1
+                ? "Esta missão aceita só 1 foto."
+                : "Esta missão aceita no máximo " + missao.getMaxFotos() + " fotos.");
+        }
+        List<byte[]> imagens = fotos.stream()
+            .map(f -> Jpeg.decodificar(f, LIMITE_FOTO_BYTES, "Foto grande demais."))
+            .toList();
         String resposta = limpo.isEmpty() ? null : limpo;
 
         boolean individual = missao.individual();
@@ -149,8 +157,8 @@ public class ConclusaoService {
         Conclusao conclusao = individual
             ? Conclusao.enviadaIndividual(missao, eu, resposta, agora)
             : Conclusao.enviada(missao, tripulacoes.findById(tripulacaoId).orElseThrow(), eu, resposta, agora);
-        String chave = imagem == null ? null : UUID.randomUUID().toString();
-        conclusao.anexarFoto(chave);
+        List<String> chaves = imagens.stream().map(i -> UUID.randomUUID().toString()).toList();
+        conclusao.anexarFotos(chaves);
         try {
             conclusoes.saveAndFlush(conclusao);
         } catch (DataIntegrityViolationException e) {
@@ -158,12 +166,14 @@ public class ConclusaoService {
             // transação desfaz também a vaga ocupada.
             throw new ResponseStatusException(HttpStatus.CONFLICT, jaEnviou);
         }
-        if (imagem != null) {
-            fotosEnvio.saveAndFlush(new FotoEnvio(conclusao.getId(), chave, imagem));
+        for (int i = 0; i < imagens.size(); i++) {
+            fotosEnvio.save(new FotoEnvio(conclusao.getId(), i, chaves.get(i), imagens.get(i)));
         }
+        fotosEnvio.flush();
         // Lançamento sem "criado_por": foi aceito automaticamente, não por um staff.
         lancar(conclusao, null, agora);
-        return new MinhaConclusao(conclusao.getStatus(), conclusao.getResposta(), null, chave);
+        return new MinhaConclusao(conclusao.getStatus(), conclusao.getResposta(), null, conclusao.getFotoChave(),
+            conclusao.getFotoChaves());
     }
 
     // O que cada comprovação exige do envio.

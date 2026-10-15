@@ -185,6 +185,23 @@ class MissaoTests {
     }
 
     @Test
+    void staffEscolheOMaximoDeFotos() throws Exception {
+        String staff = token("staff.teste@exemplo.com");
+        String tres = MAPA_DAS_DORES.replace("\"visivel\": true",
+            "\"visivel\": true, \"comprovacao\": \"FOTO\", \"maxFotos\": 3");
+        long id = idCriado(staff, tres);
+        // Sem o campo na edição, o máximo continua o mesmo.
+        mvc.perform(put("/api/staff/missoes/" + id).header("Authorization", staff)
+                .contentType(MediaType.APPLICATION_JSON).content(MAPA_DAS_DORES))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.maxFotos").value(3));
+        // Missão sem o campo aceita 1 foto; acima de 5, recusa.
+        criar(staff, MAPA_DAS_DORES).andExpect(jsonPath("$.maxFotos").value(1));
+        criar(staff, MAPA_DAS_DORES.replace("\"visivel\": true", "\"visivel\": true, \"maxFotos\": 6"))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void excluiMissaoDepoisDeRetirarOsEnvios() throws Exception {
         String staff = token("staff.teste@exemplo.com");
         long id = idCriado(staff, INDIVIDUAL);

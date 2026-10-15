@@ -15,11 +15,12 @@ public record MissaoResposta(
     boolean visivel,
     int vagasUsadas,
     AlcanceMissao alcance,
-    Comprovacao comprovacao) {
+    Comprovacao comprovacao,
+    int maxFotos) {
 
     static MissaoResposta de(Missao m) {
         return new MissaoResposta(m.getId(), m.getTitulo(), m.getDescricao(), m.getPontos(), m.getVagas(),
             m.getInicio(), m.getFim(), m.getConclusao(), m.isVisivel(), m.getVagasUsadas(), m.getAlcance(),
-            m.getComprovacao());
+            m.getComprovacao(), m.getMaxFotos());
     }
 }

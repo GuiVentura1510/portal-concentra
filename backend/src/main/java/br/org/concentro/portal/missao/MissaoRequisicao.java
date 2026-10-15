@@ -21,5 +21,8 @@ public record MissaoRequisicao(
     boolean visivel,
     AlcanceMissao alcance,
     // Sem "comprovacao", a missão nova pede texto e a existente mantém o que tinha.
-    Comprovacao comprovacao) {
+    Comprovacao comprovacao,
+    // Quantas fotos o envio aceita (1 a 5). Sem o campo, a missão nova aceita 1 e a
+    // existente mantém o que tinha.
+    @Min(1) @Max(Missao.MAX_FOTOS) Integer maxFotos) {
 }

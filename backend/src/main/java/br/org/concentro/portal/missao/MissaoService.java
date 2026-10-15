@@ -39,6 +39,7 @@ public class MissaoService {
         Missao missao = new Missao(r.titulo().trim(), descricao(r), r.pontos(), r.vagas(), instante(r.inicio()),
             instante(r.fim()), r.conclusao(), r.visivel(), alcance);
         missao.definirComprovacao(r.comprovacao() == null ? Comprovacao.TEXTO : r.comprovacao());
+        missao.definirMaxFotos(r.maxFotos() == null ? 1 : r.maxFotos());
         return MissaoResposta.de(missoes.save(missao));
     }
 
@@ -56,6 +57,9 @@ public class MissaoService {
             instante(r.fim()), r.conclusao(), r.visivel(), alcance);
         if (r.comprovacao() != null) {
             missao.definirComprovacao(r.comprovacao());
+        }
+        if (r.maxFotos() != null) {
+            missao.definirMaxFotos(r.maxFotos());
         }
         return MissaoResposta.de(missao);
     }

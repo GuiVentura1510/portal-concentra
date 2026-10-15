@@ -53,6 +53,13 @@ public class Missao {
     @Column(nullable = false, length = 20)
     private Comprovacao comprovacao = Comprovacao.TEXTO;
 
+    // Quantas fotos o envio aceita, de 1 a 5 (V11). Só vale quando a missão aceita foto.
+    @Column(name = "max_fotos", nullable = false)
+    private int maxFotos = 1;
+
+    // Teto do "maxFotos", também conferido no banco (V11).
+    public static final int MAX_FOTOS = 5;
+
     // Vagas já ocupadas. Só muda pelo MissaoRepository.ocuparVaga (V6).
     @Column(name = "vagas_usadas", nullable = false)
     private int vagasUsadas;
@@ -135,6 +142,14 @@ public class Missao {
 
     public void definirComprovacao(Comprovacao comprovacao) {
         this.comprovacao = comprovacao;
+    }
+
+    public int getMaxFotos() {
+        return maxFotos;
+    }
+
+    public void definirMaxFotos(int maxFotos) {
+        this.maxFotos = maxFotos;
     }
 
     public boolean individual() {

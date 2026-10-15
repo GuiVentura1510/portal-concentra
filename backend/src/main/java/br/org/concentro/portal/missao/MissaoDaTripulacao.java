@@ -1,6 +1,7 @@
 package br.org.concentro.portal.missao;
 
 import java.time.Instant;
+import java.util.List;
 
 // Uma missão como o congressista vê: dados, situação, o que já foi enviado e se
 // quem está logado pode enviar agora. Nas missões da tripulação, "minhaConclusao"
@@ -18,12 +19,16 @@ public record MissaoDaTripulacao(
     FormaConclusao conclusao,
     AlcanceMissao alcance,
     Comprovacao comprovacao,
+    // Quantas fotos o envio aceita (V11).
+    int maxFotos,
     SituacaoMissao situacao,
     MinhaConclusao minhaConclusao,
     boolean possoEnviar) {
 
     // A última tentativa nesta missão.
-    // "fotoChave" forma o endereço /api/comprovacoes/{chave}; vazia sem foto.
-    public record MinhaConclusao(StatusConclusao status, String resposta, String motivoRecusa, String fotoChave) {
+    // Cada chave forma o endereço /api/comprovacoes/{chave}. "fotoChaves" traz todas
+    // as fotos do envio (vazia sem foto); "fotoChave" é a primeira, para o site antigo.
+    public record MinhaConclusao(StatusConclusao status, String resposta, String motivoRecusa, String fotoChave,
+            List<String> fotoChaves) {
     }
 }

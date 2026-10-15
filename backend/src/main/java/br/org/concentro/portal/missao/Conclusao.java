@@ -67,6 +67,10 @@ public class Conclusao {
     @Column(name = "foto_chave", length = 36)
     private String fotoChave;
 
+    // Chaves de todas as fotos do envio, separadas por vírgula (V11). Vazia sem foto.
+    @Column(name = "fotos_chaves", length = 200)
+    private String fotosChaves;
+
     // Construtor vazio exigido pelo JPA.
     protected Conclusao() {
     }
@@ -173,8 +177,15 @@ public class Conclusao {
         return fotoChave;
     }
 
-    // Chamado antes de salvar o envio; a imagem é gravada logo depois, com o id.
-    public void anexarFoto(String chave) {
-        this.fotoChave = chave;
+    // Todas as fotos do envio, na ordem em que foram mandadas.
+    public java.util.List<String> getFotoChaves() {
+        return fotosChaves == null || fotosChaves.isEmpty() ? java.util.List.of()
+            : java.util.List.of(fotosChaves.split(","));
+    }
+
+    // Chamado antes de salvar o envio; as imagens são gravadas logo depois, com o id.
+    public void anexarFotos(java.util.List<String> chaves) {
+        this.fotoChave = chaves.isEmpty() ? null : chaves.get(0);
+        this.fotosChaves = chaves.isEmpty() ? null : String.join(",", chaves);
     }
 }

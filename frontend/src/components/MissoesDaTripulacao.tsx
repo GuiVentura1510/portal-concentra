@@ -1,11 +1,12 @@
-import { User, Users } from "lucide-react";
+import { User, Users, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-import { FotoDoEnvio } from "@/components/FotoDoEnvio";
+import { FotosDoEnvio } from "@/components/FotoDoEnvio";
 import { Button } from "@/components/ui/button";
 import { api, ErroApi } from "@/lib/api";
 import { textoJanela } from "@/lib/datas";
 import { reduzirFotoDeEnvio } from "@/lib/foto";
+import { contar } from "@/lib/opcoes";
 
 type StatusConclusao = "PENDENTE" | "APROVADA" | "RECUSADA";
 type Situacao = "EM_BREVE" | "ABERTA" | "ENCERRADA" | "ESGOTADA";
@@ -23,12 +24,15 @@ type Missao = {
   conclusao: "ENVIO_CAPITAO" | "STAFF_MARCA";
   alcance: "TRIPULACAO" | "INDIVIDUAL";
   comprovacao: Comprovacao;
+  // Quantas fotos o envio aceita (desde a V11). Pode faltar se a API ainda for a antiga.
+  maxFotos?: number;
   situacao: Situacao;
   minhaConclusao: {
     status: StatusConclusao;
     resposta: string | null;
     motivoRecusa: string | null;
     fotoChave: string | null;
+    fotoChaves?: string[];
   } | null;
   possoEnviar: boolean;
 };
@@ -173,8 +177,8 @@ function CartaoMissao({
   aoEnviar: () => Promise<void>;
 }) {
   const [texto, setTexto] = useState("");
-  // Foto já reduzida, em base64, pronta para o envio.
-  const [foto, setFoto] = useState<string | null>(null);
+  // Fotos já reduzidas, em base64, prontas para o envio (até missao.maxFotos).
+  const [fotos, setFotos] = useState<string[]>([]);
   const [preparandoFoto, setPreparandoFoto] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -184,18 +188,25 @@ function CartaoMissao({
   const individual = missao.alcance === "INDIVIDUAL";
   const comprovacao = missao.comprovacao ?? "TEXTO";
   const aceitaFoto = comprovacao !== "TEXTO";
+  const maxFotos = missao.maxFotos ?? 1;
+  const cabemMais = fotos.length < maxFotos;
   const temTexto = texto.trim() !== "";
-  const podeEnviar =
-    comprovacao === "TEXTO" ? temTexto : comprovacao === "FOTO" ? foto !== null : temTexto || foto !== null;
+  const temFoto = fotos.length > 0;
+  const podeEnviar = comprovacao === "TEXTO" ? temTexto : comprovacao === "FOTO" ? temFoto : temTexto || temFoto;
 
-  async function escolherFoto(arquivo: File | undefined) {
-    if (!arquivo) return;
-    setErro(null);
+  // Aceita várias de uma vez (galeria) e guarda só as que cabem no limite.
+  async function escolherFotos(arquivos: FileList | null) {
+    if (!arquivos || arquivos.length === 0) return;
+    const escolhidos = Array.from(arquivos).slice(0, maxFotos - fotos.length);
+    setErro(
+      arquivos.length > escolhidos.length ? `Esta missão aceita até ${contar(maxFotos, "foto", "fotos")}.` : null,
+    );
     setPreparandoFoto(true);
     try {
-      setFoto(await reduzirFotoDeEnvio(arquivo));
+      const reduzidas = await Promise.all(escolhidos.map((a) => reduzirFotoDeEnvio(a)));
+      setFotos((atuais) => [...atuais, ...reduzidas].slice(0, maxFotos));
     } catch {
-      setErro("Não foi possível usar esta foto. Tente outra.");
+      setErro("Não foi possível usar uma das fotos. Tente outra.");
     } finally {
       setPreparandoFoto(false);
     }
@@ -207,11 +218,13 @@ function CartaoMissao({
     try {
       await api(`/api/missoes/${missao.id}/resposta`, {
         metodo: "POST",
-        corpo: { texto, foto },
+        // A primeira vai em "foto" e as demais em "fotos": a API nova junta as duas, e a
+        // antiga (durante uma publicação) ainda recebe a primeira.
+        corpo: { texto, foto: fotos[0] ?? null, fotos: fotos.slice(1) },
         autenticado: true,
       });
       setTexto("");
-      setFoto(null);
+      setFotos([]);
       await aoEnviar();
     } catch (e) {
       setErro(mensagemDeErro(e));
@@ -242,7 +255,7 @@ function CartaoMissao({
           <p className="text-sm font-medium">
             Cumprida! +{missao.pontos} pontos {individual ? "no seu ranking individual" : "para a tripulação"}.
           </p>
-          {minha.fotoChave && <FotoDoEnvio chave={minha.fotoChave} />}
+          <FotosDoEnvio fotoChaves={minha.fotoChaves} fotoChave={minha.fotoChave} />
         </>
       )}
       {/* Desde 12/10 o envio vale na hora; "RECUSADA" é um envio retirado pelo staff. */}
@@ -270,32 +283,52 @@ function CartaoMissao({
           {aceitaFoto && (
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium">
-                {comprovacao === "FOTO" ? "Foto (obrigatória)" : "Foto (opcional se escrever a resposta)"}
+                {maxFotos === 1 ? "Foto" : `Fotos (até ${maxFotos})`}
+                {comprovacao === "FOTO" ? " · obrigatória" : " · opcional se escrever a resposta"}
               </span>
-              {foto && (
-                <img
-                  src={`data:image/jpeg;base64,${foto}`}
-                  alt="Foto escolhida para o envio"
-                  className="max-h-48 w-fit max-w-full rounded-lg border object-contain"
-                />
+              {temFoto && (
+                <ul className="grid grid-cols-2 gap-2">
+                  {fotos.map((foto, i) => (
+                    <li key={i} className="relative">
+                      <img
+                        src={`data:image/jpeg;base64,${foto}`}
+                        alt={`Foto ${i + 1} escolhida para o envio`}
+                        className="aspect-square w-full rounded-lg border bg-white object-cover"
+                      />
+                      <button
+                        type="button"
+                        aria-label={`Tirar a foto ${i + 1} do envio`}
+                        disabled={enviando}
+                        onClick={() => setFotos((atuais) => atuais.filter((_, j) => j !== i))}
+                        className="absolute top-1 right-1 flex size-8 items-center justify-center rounded-full bg-noite/80 text-white"
+                      >
+                        <X className="size-4" aria-hidden="true" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               )}
-              <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-lg border bg-white px-3 text-sm font-medium">
-                {preparandoFoto ? "Preparando a foto..." : foto ? "Trocar foto" : "Tirar ou escolher foto"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  disabled={preparandoFoto || enviando}
-                  onChange={(e) => {
-                    void escolherFoto(e.target.files?.[0]);
-                    e.target.value = "";
-                  }}
-                />
-              </label>
-              {foto && (
-                <Button variant="outline" className="h-10" disabled={enviando} onClick={() => setFoto(null)}>
-                  Tirar a foto do envio
-                </Button>
+              {cabemMais && (
+                <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-lg border bg-white px-3 text-sm font-medium">
+                  {preparandoFoto
+                    ? "Preparando..."
+                    : temFoto
+                      ? `Adicionar foto (${fotos.length} de ${maxFotos})`
+                      : maxFotos === 1
+                        ? "Tirar ou escolher foto"
+                        : "Tirar ou escolher fotos"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple={maxFotos - fotos.length > 1}
+                    className="sr-only"
+                    disabled={preparandoFoto || enviando}
+                    onChange={(e) => {
+                      void escolherFotos(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
               )}
             </div>
           )}
@@ -326,7 +359,7 @@ function mensagemDeErro(e: unknown): string {
   if (e instanceof ErroApi) {
     if (e.status === 403) return "Você não pode enviar esta resposta (nas missões da tripulação, só o capitão envia).";
     if (e.status === 409) return "Não deu para enviar: a missão fechou, as vagas acabaram ou a resposta já foi enviada.";
-    if (e.status === 400) return "Envio recusado: confira a resposta e a foto que esta missão pede.";
+    if (e.status === 400) return "Envio recusado: confira a resposta e as fotos que esta missão pede.";
     if (e.status === 0) return "Sem conexão com o servidor. Confira a internet e tente de novo.";
   }
   return "Não foi possível enviar. Tente de novo.";

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { FotoDoEnvio } from "@/components/FotoDoEnvio";
+import { FotosDoEnvio } from "@/components/FotoDoEnvio";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api, ErroApi } from "@/lib/api";
@@ -16,8 +16,9 @@ type Envio = {
   resposta: string | null;
   enviadaPor: string | null;
   enviadaEm: string;
-  // Chave da foto do envio, se houver.
+  // Chave da primeira foto do envio, se houver, e de todas (desde a V11).
   fotoChave: string | null;
+  fotoChaves?: string[];
 };
 
 function buscarEnvios() {
@@ -124,7 +125,7 @@ function ItemEnvio({ envio, aoRetirar }: { envio: Envio; aoRetirar: () => void }
         {formatarHorario(envio.enviadaEm)}
       </p>
       {envio.resposta && <p className="text-sm whitespace-pre-line">{envio.resposta}</p>}
-      {envio.fotoChave && <FotoDoEnvio chave={envio.fotoChave} />}
+      <FotosDoEnvio fotoChaves={envio.fotoChaves} fotoChave={envio.fotoChave} />
 
       {!retirando ? (
         <Button variant="outline" className="h-10" onClick={() => setRetirando(true)}>

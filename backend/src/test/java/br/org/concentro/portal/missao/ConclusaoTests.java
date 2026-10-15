@@ -356,4 +356,41 @@ class ConclusaoTests {
             .andExpect(status().isBadRequest());
         enviarCorpo(membro, m.getId(), "{\"foto\": null}").andExpect(status().isBadRequest());
     }
+
+    @Test
+    void missaoComVariasFotos() throws Exception {
+        Missao m = aberta(FormaConclusao.ENVIO_CAPITAO, null);
+        m.definirComprovacao(Comprovacao.FOTO);
+        m.definirMaxFotos(3);
+        m = missoes.saveAndFlush(m);
+        String membro = token(pessoa(3).getEmail());
+        String quatro = "{\"fotos\": [\"" + JPEG + "\", \"" + JPEG + "\", \"" + JPEG + "\", \"" + JPEG + "\"]}";
+        enviarCorpo(membro, m.getId(), quatro).andExpect(status().isBadRequest());
+
+        String resposta = enviarCorpo(membro, m.getId(), "{\"fotos\": [\"" + JPEG + "\", \"" + JPEG + "\"]}")
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.fotoChaves.length()").value(2))
+            .andReturn().getResponse().getContentAsString();
+        java.util.List<String> chaves = JsonPath.read(resposta, "$.fotoChaves");
+        // A primeira foto continua em "fotoChave", para o site antigo.
+        org.junit.jupiter.api.Assertions.assertEquals(chaves.get(0), JsonPath.read(resposta, "$.fotoChave"));
+        for (String chave : chaves) {
+            mvc.perform(get("/api/comprovacoes/" + chave)).andExpect(status().isOk());
+        }
+
+        mvc.perform(get("/api/missoes").header("Authorization", membro))
+            .andExpect(jsonPath("$[?(@.id == " + m.getId() + ")].maxFotos").value(hasItem(3)))
+            .andExpect(jsonPath("$[?(@.id == " + m.getId() + ")].minhaConclusao.fotoChaves[1]").value(hasItem(chaves.get(1))));
+        mvc.perform(get("/api/staff/conclusoes").header("Authorization", token("staff.teste@exemplo.com")))
+            .andExpect(jsonPath("$[?(@.missaoId == " + m.getId() + ")].fotoChaves[1]").value(hasItem(chaves.get(1))));
+    }
+
+    @Test
+    void missaoDeUmaFotoRecusaDuas() throws Exception {
+        Missao m = comComprovacao(Comprovacao.TEXTO_OU_FOTO);
+        String membro = token(pessoa(4).getEmail());
+        enviarCorpo(membro, m.getId(), "{\"foto\": \"" + JPEG + "\", \"fotos\": [\"" + JPEG + "\"]}")
+            .andExpect(status().isBadRequest());
+        enviarCorpo(membro, m.getId(), "{\"fotos\": [\"" + JPEG + "\"]}").andExpect(status().isCreated());
+    }
 }

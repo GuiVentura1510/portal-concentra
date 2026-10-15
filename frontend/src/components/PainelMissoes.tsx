@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api, ErroApi } from "@/lib/api";
 import { apiParaCampo, campoParaApi, textoJanela } from "@/lib/datas";
+import { contar } from "@/lib/opcoes";
 
 type FormaConclusao = "ENVIO_CAPITAO" | "STAFF_MARCA";
 export type AlcanceMissao = "TRIPULACAO" | "INDIVIDUAL";
@@ -23,6 +24,8 @@ export type MissaoStaff = {
   vagasUsadas: number;
   alcance: AlcanceMissao;
   comprovacao: Comprovacao;
+  // Quantas fotos o envio aceita (1 a 5). Pode faltar se a API ainda for a antiga.
+  maxFotos?: number;
 };
 type Missao = MissaoStaff;
 type Comprovacao = "TEXTO" | "TEXTO_OU_FOTO" | "FOTO";
@@ -243,6 +246,7 @@ function CartaoMissaoStaff({
       {missao.conclusao === "ENVIO_CAPITAO" && (
         <p className="text-sm text-muted-foreground">
           Envio: {COMPROVACOES.find((c) => c.valor === missao.comprovacao)?.rotulo ?? "Só texto"}
+          {missao.comprovacao !== "TEXTO" && ` · até ${contar(missao.maxFotos ?? 1, "foto", "fotos")}`}
         </p>
       )}
 
@@ -304,6 +308,7 @@ function FormMissao({
       conclusao: dados.get("conclusao"),
       alcance: dados.get("alcance"),
       comprovacao: dados.get("comprovacao"),
+      maxFotos: Number(dados.get("maxFotos") ?? 1),
       visivel: dados.get("visivel") === "on",
     };
 
@@ -403,6 +408,15 @@ function FormMissao({
           {COMPROVACOES.map((c) => (
             <option key={c.valor} value={c.valor}>
               {c.rotulo}
+            </option>
+          ))}
+        </Selecao>
+      </Campo>
+      <Campo rotulo="Máximo de fotos por envio (quando a missão aceita foto)" id="maxFotos">
+        <Selecao id="maxFotos" name="maxFotos" required defaultValue={String(missao?.maxFotos ?? 1)}>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <option key={n} value={n}>
+              {contar(n, "foto", "fotos")}
             </option>
           ))}
         </Selecao>
