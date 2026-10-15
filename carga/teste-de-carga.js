@@ -120,8 +120,24 @@ const JOGO = {
   },
 };
 
+// Só cadastros, subindo de 10 para 100 pessoas criando conta ao mesmo tempo
+// (cerca de 5 minutos). Não monta tripulações. Depois, rodar a limpeza.sql.
+const CADASTRO = {
+  cadastro: {
+    executor: "ramping-vus", exec: "cadastrar", startVUs: 10,
+    stages: [
+      { duration: "1m", target: 20 },
+      { duration: "1m", target: 50 },
+      { duration: "1m", target: 100 },
+      { duration: "1m30s", target: 100 },
+      { duration: "20s", target: 0 },
+    ],
+    gracefulRampDown: "10s", tags: { fase: "cadastro" },
+  },
+};
+
 export const options = {
-  scenarios: MODO === "fumaca" ? FUMACA : MODO === "jogo" ? JOGO : COMPLETO,
+  scenarios: MODO === "fumaca" ? FUMACA : MODO === "jogo" ? JOGO : MODO === "cadastro" ? CADASTRO : COMPLETO,
   setupTimeout: "2m",
   teardownTimeout: "2m",
   thresholds: {
@@ -206,6 +222,12 @@ export function setup() {
   }
 
   const ejs = json("GET", "/api/ejs", null, null, "preparo", "ejs").json().map((e) => e.id);
+  if (MODO === "cadastro") {
+    if (resumo.json("tripulacoes") > 0) {
+      throw new Error("Já existem tripulações: os cadastros entrariam nelas. Rode a limpeza.sql antes.");
+    }
+    return { staff, ejs, missoes: [], tokens: [] };
+  }
 
   const base = { descricao: "Missão criada pelo teste de carga. Será apagada.", pontos: 10, vagas: null,
     inicio: null, fim: null, conclusao: "ENVIO_CAPITAO", visivel: true };
@@ -357,6 +379,10 @@ export function logar() {
 
 // No fim, esconde as missões de carga (a limpeza.sql apaga de vez).
 export function teardown(dados) {
+  if (MODO === "cadastro") {
+    console.log("Fim. Agora rode o carga/limpeza.sql para apagar as contas de carga.");
+    return;
+  }
   for (const m of dados.missoes) {
     json("PUT", `/api/staff/missoes/${m.id}`, { ...m.corpo, visivel: false }, dados.staff, "preparo", "esconder-missao");
   }
