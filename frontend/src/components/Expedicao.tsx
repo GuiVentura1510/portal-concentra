@@ -39,7 +39,7 @@ const REGRAS: { titulo: string; texto: string; Icone: LucideIcon }[] = [
   {
     titulo: "Sua tripulação",
     texto:
-      "De 5 a 6 pessoas de EJs diferentes, misturando quem está chegando com quem já tem estrada. Cada tripulação tem o nome de uma constelação e um ponto de encontro. A sua é revelada em 15/10; quem se cadastrar depois entra direto numa tripulação.",
+      "De 5 a 6 pessoas de EJs diferentes, misturando quem está chegando com quem já tem estrada. Cada tripulação tem o nome de uma constelação e um ponto de encontro. A sua é revelada no sábado, 17/10, ao meio-dia; quem se cadastrar depois entra direto numa tripulação.",
     Icone: Users,
   },
   {

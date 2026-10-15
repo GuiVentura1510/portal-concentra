@@ -236,7 +236,7 @@ function Montar({ pessoas, aoMontar }: { pessoas: number; aoMontar: () => Promis
       <p className="font-semibold">Montar tripulações</p>
       <p className="text-sm">
         Distribui {pessoas === 1 ? "o congressista cadastrado" : `os ${pessoas} congressistas`} em tripulações de 5 a 6 pessoas, de EJs diferentes e misturando os
-        tempos de MEJ. Roda uma única vez, no dia 15/10. Quem se cadastrar depois entra automaticamente numa
+        tempos de MEJ. Roda uma única vez, no sábado (17/10), às 12h. Quem se cadastrar depois entra automaticamente numa
         tripulação com vaga.
       </p>
       {resultado && (

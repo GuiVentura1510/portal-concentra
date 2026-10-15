@@ -28,7 +28,7 @@ export default function Missoes() {
           setEstado({ tipo: "staff" });
           return;
         }
-        // Sem tripulação a API responde 404 (antes da montagem, em 15/10).
+        // Sem tripulação a API responde 404 (antes da montagem, no sábado, 17/10, às 12h).
         const temTripulacao = await api("/api/tripulacao", { autenticado: true }).then(
           () => true,
           () => false,

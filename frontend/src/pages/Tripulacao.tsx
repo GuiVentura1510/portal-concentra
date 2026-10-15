@@ -66,7 +66,7 @@ export default function Tripulacao() {
         try {
           tripulacao = await api<DadosTripulacao>("/api/tripulacao", { autenticado: true });
         } catch (e) {
-          // 404 até a montagem, em 15/10.
+          // 404 até a montagem, no sábado (17/10), às 12h.
           setEstado(e instanceof ErroApi && e.status === 404 ? { tipo: "aguardando" } : { tipo: "falha" });
           return;
         }
@@ -120,7 +120,7 @@ export default function Tripulacao() {
       {estado.tipo === "aguardando" && (
         <Cartao>
           <p className="text-center text-sm">
-            Sua tripulação será revelada no dia <strong>15 de outubro</strong>.
+            Sua tripulação será revelada no <strong>sábado, 17/10, ao meio-dia</strong>.
           </p>
         </Cartao>
       )}

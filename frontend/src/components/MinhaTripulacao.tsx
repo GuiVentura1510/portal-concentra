@@ -18,7 +18,7 @@ type Estado =
   | { tipo: "falha" }
   | { tipo: "pronta"; tripulacao: Tripulacao };
 
-// Tripulação de quem está logado. Até a montagem, em 15/10, a API responde 404
+// Tripulação de quem está logado. Até a montagem (sábado, 17/10, às 12h), a API responde 404
 // e a tela mostra só o aviso.
 export function MinhaTripulacao({
   meuId,
@@ -52,7 +52,7 @@ export function MinhaTripulacao({
   if (estado.tipo === "aguardando") {
     return (
       <p className="rounded-lg border border-dashed px-3 py-4 text-center text-sm">
-        Sua tripulação será revelada no dia <strong>15 de outubro</strong>.
+        Sua tripulação será revelada no <strong>sábado, 17/10, ao meio-dia</strong>.
       </p>
     );
   }
