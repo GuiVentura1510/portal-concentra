@@ -19,6 +19,8 @@
     --color-rosa: #f7a8d8;
     --color-ceu: #a4ccfa;
     --color-oceano: #51a8c8;
+    /* "ouro/300" do Figma: rótulos dourados sobre a noite (ex.: "Tripulação"). */
+    --color-ouro: #f6e9b0;
     /* Flutuação lenta das ilustrações (usada com motion-safe:). */
     --animate-flutuar: flutuar 7s ease-in-out infinite alternate;
     --animate-cintilar: cintilar 3.5s ease-in-out infinite alternate;

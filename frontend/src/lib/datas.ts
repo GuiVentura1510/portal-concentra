@@ -35,6 +35,16 @@ export function formatarHorario(iso: string): string {
   }).format(new Date(iso));
 }
 
+// Data curta, em Brasília. Ex.: "17/10/26".
+export function formatarData(iso: string): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: FUSO,
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+  }).format(new Date(iso));
+}
+
 // Janela de uma missão em texto. Ex.: "De sáb., 17/10, 10:30 até sáb., 17/10, 11:20".
 export function textoJanela(inicio: string | null, fim: string | null): string {
   if (inicio && fim) return `De ${formatarHorario(inicio)} até ${formatarHorario(fim)}`;

@@ -16,6 +16,11 @@ export function urlDaComprovacao(chave: string): string {
   return `${API_URL}/api/comprovacoes/${chave}`;
 }
 
+// Endereço de uma foto do Diário de Bordo (só a tripulação e o staff recebem a chave).
+export function urlDoDiario(chave: string): string {
+  return `${API_URL}/api/diario/${chave}`;
+}
+
 function carregar(url: string): Promise<HTMLImageElement> {
   return new Promise((resolver, rejeitar) => {
     const imagem = new Image();

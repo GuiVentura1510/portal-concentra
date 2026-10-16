@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 
 import { CartaoTripulacaoStaff, type MissaoMarcavel, type Tripulacao } from "@/components/CartaoTripulacaoStaff";
+import { DiarioStaff } from "@/components/DiarioStaff";
 import { EnviosStaff } from "@/components/EnviosStaff";
 import { PainelMissoes, type MissaoStaff } from "@/components/PainelMissoes";
 import { PainelPessoas } from "@/components/PainelPessoas";
@@ -34,7 +35,7 @@ type Painel = {
   marcaveis: MissaoMarcavel[];
   individuais: MissaoMarcavel[];
 };
-type Aba = "tripulacoes" | "missoes" | "envios" | "pessoas";
+type Aba = "tripulacoes" | "missoes" | "envios" | "diario" | "pessoas";
 
 // Busca o resumo, a lista de tripulações (se já houver) e as missões que o staff registra direto.
 async function buscarPainel(): Promise<Painel> {
@@ -136,7 +137,7 @@ export default function Staff() {
           )}
 
           {estado === "pronto" && (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
               <Button
                 variant={aba === "tripulacoes" ? "default" : "outline"}
                 className="h-10"
@@ -159,6 +160,13 @@ export default function Staff() {
                 Envios
               </Button>
               <Button
+                variant={aba === "diario" ? "default" : "outline"}
+                className="h-10"
+                onClick={() => setAba("diario")}
+              >
+                Diário
+              </Button>
+              <Button
                 variant={aba === "pessoas" ? "default" : "outline"}
                 className="h-10"
                 onClick={() => setAba("pessoas")}
@@ -170,6 +178,7 @@ export default function Staff() {
 
           {estado === "pronto" && aba === "missoes" && <PainelMissoes aoMudar={() => void recarregar()} />}
           {estado === "pronto" && aba === "envios" && <EnviosStaff />}
+          {estado === "pronto" && aba === "diario" && <DiarioStaff />}
           {estado === "pronto" && aba === "pessoas" && <PainelPessoas missoesIndividuais={individuais} />}
 
           {estado === "pronto" && aba === "tripulacoes" && resumo && (

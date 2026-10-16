@@ -36,6 +36,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/fotos/*").permitAll()
                 // Foto de envio de missão: mesma ideia, protegida pela chave sorteada.
                 .requestMatchers(HttpMethod.GET, "/api/comprovacoes/*").permitAll()
+                // Foto do Diário de Bordo: idem, protegida pela chave sorteada.
+                .requestMatchers(HttpMethod.GET, "/api/diario/*").permitAll()
                 // Página de erro interna do Spring: sem isto, todo erro vira 403.
                 .requestMatchers("/error").permitAll()
                 // Rotas do staff: exigem o papel STAFF no token.

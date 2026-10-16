@@ -174,6 +174,7 @@ docker compose exec db psql -U portal -d portal -c "delete from lancamento; dele
 | `POST /api/login` | Devolve o token |
 | `GET /api/fotos/{chave}` | Imagem de uma foto de perfil (JPEG), pela chave sorteada no envio |
 | `GET /api/comprovacoes/{chave}` | Foto de um envio de missão (JPEG); a chave só chega ao staff e a quem enviou |
+| `GET /api/diario/{chave}` | Foto do Diário de Bordo (JPEG); a chave só chega à tripulação e ao staff |
 
 ### Com login
 
@@ -185,6 +186,9 @@ docker compose exec db psql -U portal -d portal -c "delete from lancamento; dele
 | `PUT /api/perfil/foto` | Envia ou troca a própria foto: `{"imagem": "<JPEG em base64>"}`. Devolve a chave nova |
 | `DELETE /api/perfil/foto` | Remove a própria foto |
 | `GET /api/tripulacao` | Tripulação da pessoa (404 antes da montagem) |
+| `GET /api/tripulacao/diario` | Diário de Bordo da tripulação: o limite de fotos e as fotos anexadas, com quem anexou (404 sem tripulação) |
+| `POST /api/tripulacao/diario` | Anexa uma foto ao diário: `{"imagem": "<JPEG em base64>", "legenda": "..."}` (até 400 KB; legenda opcional, até 30 caracteres). Qualquer integrante; 409 com o diário cheio |
+| `DELETE /api/tripulacao/diario/{id}` | Tira uma foto do diário (só quem anexou; 403 para os outros) |
 | `GET /api/missoes` | Missões visíveis, com a situação da tripulação em cada uma |
 | `POST /api/missoes/{id}/resposta` | Envio da resposta de uma missão: `texto` e/ou `foto` (JPEG em base64, até 400 KB; o site reduz para 1280 px) |
 | `GET /api/ranking` | Tripulações por pontos (só missões da tripulação) |
@@ -205,6 +209,8 @@ docker compose exec db psql -U portal -d portal -c "delete from lancamento; dele
 | `POST /api/staff/missoes/{id}/marcar` | Registra a missão cumprida: `{"tripulacaoId": ...}` nas da tripulação, `{"congressistaId": ...}` nas individuais |
 | `GET /api/staff/conclusoes` | Últimos 300 envios aceitos e registros do staff, do mais novo para o mais antigo |
 | `POST /api/staff/conclusoes/{id}/retirar` | Retira o envio (motivo opcional): apaga os pontos e devolve a vaga |
+| `GET /api/staff/diario` | Últimas 300 fotos anexadas aos diários, da mais nova para a mais antiga |
+| `DELETE /api/staff/diario/{id}` | Tira qualquer foto de um diário |
 | `GET /api/staff/congressistas?busca=` | Busca por nome, e-mail ou EJ |
 | `POST /api/staff/congressistas/{id}/senha` | Gera uma senha temporária |
 | `DELETE /api/staff/congressistas/{id}` | Remove um cadastro sem histórico |
@@ -256,7 +262,7 @@ O visual segue o mockup da capa e o Manual de Identidade Visual do Concentra 26.
 
 - **Fontes** (pacotes `@fontsource-variable`, sem arquivos na pasta): Nunito é a fonte de todo o site; Lora itálica fica na classe `font-titulo` ("Estrela Polar" e os números da capa); Caveat fica na classe `font-manuscrita` ("um só norte"). As três foram escolhidas pelo mockup, porque o Manual não informa as fontes. Para trocar, mude o `@import` e a variável correspondente no `src/index.css`.
 - **Duas superfícies:** a página é azul-noite com estrelas e os cartões são brancos. O `:root` do `src/index.css` tem as cores da página, e o bloco `[data-slot="card"]` troca as mesmas variáveis dentro de qualquer cartão. Assim botões, campos e textos do shadcn ficam legíveis nos dois lugares sem mudar cada componente.
-- **Cores da marca**, disponíveis como classes (`text-creme`, `bg-noite` etc.): `noite` #0a0e3d, `creme` #f7f2e2, `lilas` #c3cbff, `rosa` #f7a8d8, `ceu` #a4ccfa, `oceano` #51a8c8. Os contrastes de texto foram conferidos (mínimo de 4,5:1).
+- **Cores da marca**, disponíveis como classes (`text-creme`, `bg-noite` etc.): `noite` #0a0e3d, `creme` #f7f2e2, `lilas` #c3cbff, `rosa` #f7a8d8, `ceu` #a4ccfa, `oceano` #51a8c8, `ouro` #f6e9b0 (o "ouro/300" do Figma, nos rótulos dourados). Os contrastes de texto foram conferidos (mínimo de 4,5:1).
 - **Capa** (`src/pages/BoasVindas.tsx`): aparece em `/` para quem não está logado; a escolha entre capa e início fica no `App.tsx`. A ilustração (`src/components/CenaExpedicao.tsx`) ocupa a altura que sobra na tela, e tudo nela é posicionado em porcentagem, para caber em celulares de 360×640 a 412×915 sem rolagem. Os números do cartão (983 tripulantes, 3 missões, 1 magna final) são fixos, por decisão da organização, e ficam na lista `NUMEROS` no topo do arquivo.
 - **Logotipo:** provisório, em texto. O arquivo do Manual não tem transparência nem o "26". Fica em `src/components/Logo.tsx`, usado pela capa, pelo login e pelo cadastro; quando chegar o oficial, a troca é só nesse arquivo.
 - **Login e cadastro:** cartão branco centralizado sobre a moldura `src/components/FundoDecorado.tsx` (estrelas e viajantes nos cantos, numa camada fixa que não rola com o formulário).
@@ -314,8 +320,10 @@ O banco é configurado para validação do schema (`ddl-auto: validate`), então
 | `V8__foto_de_perfil.sql` | Tabela `foto_perfil` e `congressista.foto_chave` |
 | `V9__cargos_trainee_e_projetista.sql` | Cargos `TRAINEE` e `PROJETISTA`; área de atuação vazia só para trainee |
 | `V10__foto_nos_envios.sql` | `missao.comprovacao`, tabela `foto_envio` e `conclusao.foto_chave` |
+| `V11__varias_fotos_por_envio.sql` | `missao.max_fotos`, várias fotos por envio (`foto_envio.ordem`) e `conclusao.fotos_chaves` |
+| `V12__diario_de_bordo.sql` | Tabela `foto_diario`, apagada junto com a tripulação ou com quem anexou |
 
-Nos logs da API, a linha `now at version v10` (escrita depois de migrar) confirma que todas foram aplicadas. A linha `Current version of schema` é escrita antes e mostra a versão anterior.
+Nos logs da API, a linha `now at version v12` (escrita depois de migrar) confirma que todas foram aplicadas. A linha `Current version of schema` é escrita antes e mostra a versão anterior.
 
 As classes anotadas com `@Entity` precisam bater com as tabelas: se houver diferença, o backend não inicia.
 
@@ -329,6 +337,7 @@ As classes anotadas com `@Entity` precisam bater com as tabelas: se houver difer
 - **Rankings.** Os dois ficam em cache em memória por 15 segundos (`app.ranking.cache`). Empates dividem a posição. Um lançamento com a pessoa preenchida é de missão individual e conta só no ranking individual.
 - **Tripulações.** A montagem e o encaixe de quem chega depois travam as tripulações (`select ... for update`), para que cadastros simultâneos não ocupem a mesma vaga. Uma EJ só se repete numa tripulação quando tem mais gente do que o número de tripulações.
 - **Fotos de perfil.** O site recorta e reduz a foto para 256 px, em JPEG, antes de enviar; a API só aceita JPEG de até 100 KB. A imagem fica no banco (o disco do Render não é permanente), na tabela `foto_perfil`, uma por pessoa. A leitura é pública, porque a tag `<img>` não envia o token; quem protege a foto é a chave sorteada a cada envio, que forma o endereço. Como uma foto nova ganha outra chave, o navegador guarda a imagem por um ano, e a API mantém em memória as fotos já lidas.
+- **Diário de Bordo.** Na aba Tripulação, o diário mostra, como polaroides, só as fotos que os integrantes anexam do celular. São recordações da equipe: não têm relação com as missões nem valem pontos (as fotos de prova das missões ficam na aba Missões). Qualquer integrante anexa, escrevendo uma legenda opcional de até 30 caracteres, que aparece no rodapé da polaroide junto com a data. Cada tripulação tem até 20 (`DiarioService.LIMITE_POR_TRIPULACAO`), e o limite é conferido com a tripulação travada, para dois envios ao mesmo tempo não passarem dele. O site reduz cada foto como as de missão (1280 px, até 400 KB). Quem anexou tira a sua; o staff tira qualquer uma na aba Diário. As listas não carregam os bytes das imagens.
 - **Segurança.** A API responde com objetos próprios e nunca devolve senha nem hash. Senhas usam BCrypt, com no máximo 72 bytes.
 
 ## Operação do evento
@@ -338,7 +347,7 @@ As classes anotadas com `@Entity` precisam bater com as tabelas: se houver difer
 - **Missões:** a organização cria as missões no painel. Uma missão sem envios valendo pontos pode ser excluída (retire os envios na aba Envios antes); com envios, só escondida.
 - **Senha esquecida:** na aba Pessoas, "Nova senha" gera uma senha temporária para passar à pessoa. Depois de entrar, a pessoa pode trocá-la na aba Perfil, em "Trocar senha".
 - **Remoção de cadastro:** só é possível para quem não enviou nem avaliou missão, não lançou pontos e não é capitão.
-- **Foto inadequada:** na aba Pessoas, "Remover foto" tira a foto de alguém. A pessoa pode enviar outra depois.
+- **Foto inadequada:** na aba Pessoas, "Remover foto" tira a foto de perfil de alguém. A pessoa pode enviar outra depois. Uma foto (ou legenda) inadequada no Diário de Bordo sai pela aba Diário, em "Tirar do diário".
 - **Capitão:** depois de registrado, só ele envia as respostas das missões da tripulação. As individuais, cada um envia a sua.
 
 ## Testes
